@@ -10,7 +10,7 @@ WORKDIR /app
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-    git \
+    git
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
