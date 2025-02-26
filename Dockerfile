@@ -17,4 +17,4 @@ RUN pip install -r requirements.txt
 
 COPY . ./
 
-ENTRYPOINT ["python", "bot.py"]
+ENTRYPOINT ["python", "app.py"]
