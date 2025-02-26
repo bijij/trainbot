@@ -53,8 +53,6 @@ class Gtfs(Service):
             for stop_id in STOP_IDS_BY_NAME[match]:
                 matches.append((stop_id, STOPS[stop_id][0]))
 
-        print('Returning', len(matches), 'results for', request.query)
-
         return SearchStopsResult({stop_id: name for stop_id, name in matches[:MAX_RESULTS]})
 
     async def get_stop_url(self, request: GetStopUrlRequest) -> str:
