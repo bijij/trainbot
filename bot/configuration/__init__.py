@@ -12,7 +12,7 @@ class BotConfiguration:
     @property
     def command_hash(self) -> int:
         try:
-            with open('/app/config/command_hash', 'r') as f:
+            with open('config/command_hash', 'r') as f:
                 return int(f.read())
         except Exception:
             return 0
@@ -20,7 +20,7 @@ class BotConfiguration:
     @command_hash.setter
     def command_hash(self, value: int) -> None:
         try:
-            with open('/app/config/command_hash', 'w') as f:
+            with open('config/command_hash', 'w') as f:
                 f.write(str(value))
         except Exception:
             pass

@@ -26,8 +26,11 @@ class TrainBot(discord.Client):
     command_tree: discord.app_commands.CommandTree
 
     async def setup_hook(self) -> None:
-        if self.config.command_hash != _get_commands_hash(self.command_tree):
+        new_hash = _get_commands_hash(self.command_tree)
+        if self.config.command_hash != new_hash:
+            print('Detected command changes, syncing...')
             await self.command_tree.sync()
+            self.config.command_hash = new_hash
 
     async def on_ready(self) -> None:
         assert self.user is not None
