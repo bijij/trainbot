@@ -11,10 +11,19 @@ from ..configuration import BotConfiguration
 
 def _get_commands_hash(command_tree: discord.app_commands.CommandTree) -> int:
     """Generate a hashcode for the command tree."""
-    hashcode = 0
+    assert command_tree.client.user is not None
+    hashcode = command_tree.client.user.id
 
     for command in command_tree.walk_commands():
         data = dumps(command.to_dict(command_tree)).encode('utf-8')
+        hashcode = (hashcode * 397) ^ int.from_bytes(md5(data).digest())
+
+    for context_menu in command_tree.walk_commands(type=discord.AppCommandType.message):
+        data = dumps(context_menu.to_dict(command_tree)).encode('utf-8')
+        hashcode = (hashcode * 397) ^ int.from_bytes(md5(data).digest())
+
+    for context_menu in command_tree.walk_commands(type=discord.AppCommandType.user):
+        data = dumps(context_menu.to_dict(command_tree)).encode('utf-8')
         hashcode = (hashcode * 397) ^ int.from_bytes(md5(data).digest())
 
     return hashcode
