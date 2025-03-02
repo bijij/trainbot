@@ -147,7 +147,7 @@ class Route:
             case RouteType.RAIL:
                 return RAIL_COLOUR_MAP.get(self.short_name[2:], Colour.GREY)
             case RouteType.BUS:
-                return BUS_COLOUR_MAP.get(self.short_name, Colour.GREY)
+                return BUS_COLOUR_MAP.get(self.short_name, Colour.PURPLE)
             case RouteType.FERRY:
                 return FERRY_COLOUR_MAP.get(self.short_name, Colour.GREY)
 
