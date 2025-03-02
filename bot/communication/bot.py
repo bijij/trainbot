@@ -99,7 +99,11 @@ async def train(interaction: discord.Interaction, stop_id: str, direction: Direc
     timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, down_trains if direction is Direction.DOWNWARD else up_trains, RouteType.RAIL, direction)}\n```"
 
     await interaction.response.send_message(
-        embed=discord.Embed(description=timetable, timestamp=interaction.created_at).set_author(
+        embed=discord.Embed(
+            description=timetable,
+            timestamp=interaction.created_at,
+            color=discord.Colour.red(),
+        ).set_author(
             icon_url=TRANSLINK_LOGO,
             name=f"{stop.name} Train Timetable",
             url=stop.url,
@@ -143,7 +147,11 @@ async def bus(interaction: discord.Interaction, stop_id: str, private: bool = Fa
     timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, buses, RouteType.BUS)}\n```"
 
     await interaction.response.send_message(
-        embed=discord.Embed(description=timetable, timestamp=interaction.created_at).set_author(
+        embed=discord.Embed(
+            description=timetable,
+            timestamp=interaction.created_at,
+            colour=discord.Colour.pink(),
+        ).set_author(
             icon_url=TRANSLINK_LOGO,
             name=f"{stop.name} Bus Timetable",
             url=stop.url,
@@ -238,7 +246,7 @@ async def ferry(interaction: discord.Interaction, stop_id: str, private: bool = 
         embed=discord.Embed(
             description=timetable,
             timestamp=interaction.created_at,
-            color=discord.Colour.gold(),
+            color=discord.Colour.blue(),
         ).set_author(
             icon_url=TRANSLINK_LOGO,
             name=f"{stop.name} Ferry Timetable",

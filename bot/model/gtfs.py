@@ -489,10 +489,13 @@ class Gtfs(MalamarService):
         MAX_RESULTS = 25
         matches = []
 
-        for match in get_close_matches(request.query.lower(), STOPS_BY_NAME.keys(), n=MAX_RESULTS, cutoff=0.1):
-            for stop in STOPS_BY_NAME[match]:
-                if any(stop_time.trip.route.type is request.route_type for stop_time in stop.stop_times):
-                    matches.append(stop)
+        if request.query:
+            for match in get_close_matches(request.query.lower(), STOPS_BY_NAME.keys(), n=MAX_RESULTS, cutoff=0.1):
+                for stop in STOPS_BY_NAME[match]:
+                    if any(stop_time.trip.route.type is request.route_type for stop_time in stop.stop_times):
+                        matches.append(stop)
+        else:
+            matches = [stop for stop in STOPS.values() if any(stop_time.trip.route.type is request.route_type for stop_time in stop.stop_times)]
 
         return SearchStopsResult(stops=matches[:MAX_RESULTS])
 
