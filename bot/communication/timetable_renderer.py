@@ -8,6 +8,7 @@ from ..model.gtfs import Colour, Direction, RouteType, Stop, StopTimeInstance
 
 ANSI_ESCAPE = "\033[0;"
 ANSI_RESET = f"{ANSI_ESCAPE}0m"
+ZWSP = "\u200b"
 
 ANSI_FORMATING = {...}
 
@@ -369,9 +370,9 @@ def render_tram_timetable(stop: Stop, now: datetime.datetime, services: Sequence
             departs_minutes = (service.scheduled_departure_time - now).seconds // 60
             departs = f"{departs_minutes} min"
 
-            text += f"Plat{service.stop.platform_code}  {destination:<35}{departs}\n"
+            text += with_colour(Colour.GOLD, f"Plat{service.stop.platform_code}  {destination:<35}{departs}\n")
         else:
-            text += "\n"
+            text += f"{ZWSP}\n"
 
     text += choice(TRAM_FOOTERS)
 

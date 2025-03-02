@@ -187,7 +187,11 @@ async def tram(interaction: discord.Interaction, stop_id: str, private: bool = F
     timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, buses, RouteType.TRAM)}\n```"
 
     await interaction.response.send_message(
-        embed=discord.Embed(description=timetable, timestamp=interaction.created_at).set_author(
+        embed=discord.Embed(
+            description=timetable,
+            timestamp=interaction.created_at,
+            color=discord.Colour.gold(),
+        ).set_author(
             icon_url=TRANSLINK_LOGO,
             name=f"{stop.name} Tram Timetable",
             url=stop.url,
