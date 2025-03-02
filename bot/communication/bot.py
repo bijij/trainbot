@@ -196,7 +196,7 @@ async def tram(interaction: discord.Interaction, stop_id: str, private: bool = F
     )
 
 
-@bus.autocomplete("stop_id")
+@tram.autocomplete("stop_id")
 async def _tram_autocomplete_stop_id(interaction: discord.Interaction, query: str) -> list[discord.app_commands.Choice[str]]:
     assert isinstance(interaction.client, TrainBot)
 
