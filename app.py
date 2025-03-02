@@ -25,5 +25,4 @@ app.add_service(GtfsProvider)
 app.add_service(Bot)
 
 if __name__ == "__main__":
-    ...
-    # asyncio.run(app.run())
+    asyncio.run(app.run())

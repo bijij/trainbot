@@ -3,7 +3,7 @@ from asyncio import Lock
 from collections import defaultdict
 from collections.abc import Sequence
 
-from .types import Route, Service, Stop, StopTime, StopTimeInstance, Trip, TripInstance
+from .types import Route, RouteType, Service, Stop, StopTime, StopTimeInstance, Trip, TripInstance
 
 __all__ = ("GtfsDataStore",)
 
@@ -20,9 +20,9 @@ class GtfsDataStore:
         self._trips_by_route: dict[str, list[Trip]] = defaultdict(list)
         self._trips_by_service: dict[str, list[Trip]] = defaultdict(list)
         self._stops: dict[str, Stop] = {}
-        self._stops_by_name: dict[str, list[Stop]] = defaultdict(list)
         self._stop_times_by_trip: dict[str, list[StopTime]] = defaultdict(list)
         self._stop_times_by_stop: dict[str, list[StopTime]] = defaultdict(list)
+        self._route_types_by_stop: dict[str, set[RouteType]] = defaultdict(set)
 
         # Real-time data
         self._trip_instances_by_date: dict[datetime.date, dict[str, TripInstance]] = defaultdict(dict)
@@ -40,7 +40,6 @@ class GtfsDataStore:
             self._trips_by_route.clear()
             self._trips_by_service.clear()
             self._stops.clear()
-            self._stops_by_name.clear()
             self._stop_times_by_trip.clear()
             self._stop_times_by_stop.clear()
             self._trip_instances_by_date.clear()
@@ -68,15 +67,17 @@ class GtfsDataStore:
         """Adds a stop to the data store and updates the stop instances."""
         async with self._lock:
             self._stops[stop.id] = stop
-            self._stops_by_name[stop.name].append(stop)
 
     async def add_stop_time(self, stop_time: StopTime) -> None:
         """Adds a stop time to the data store and updates the stop time instances."""
         async with self._lock:
+            route_type = self._routes[stop_time.trip.route.id].type
             self._stop_times_by_trip[stop_time.trip.id].append(stop_time)
+            self._route_types_by_stop[stop_time.stop.id].add(route_type)
             stop = stop_time.stop
             while stop is not None:
                 self._stop_times_by_stop[stop.id].append(stop_time)
+                self._route_types_by_stop[stop.id].add(route_type)
                 stop = self._stops.get(stop.parent_stop_id or "")
 
     async def remove_old_trip_instances(self) -> None:
@@ -160,6 +161,10 @@ class GtfsDataStore:
     def get_stop(self, stop_id: str) -> Stop:
         """Gets a stop by its ID"""
         return self._stops[stop_id]
+
+    def get_stops_by_route_type(self, route_type: RouteType) -> list[Stop]:
+        """Gets all stops for a route type"""
+        return [stop for stop in self._stops.values() if route_type in self._route_types_by_stop[stop.id]]
 
     def get_trips_by_route(self, route_id: str) -> Sequence[Trip]:
         """Gets all trips for a route"""

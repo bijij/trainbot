@@ -1,12 +1,14 @@
 import asyncio
 import csv
 import datetime
+import logging
 from collections import defaultdict
 from io import BytesIO, TextIOWrapper
 from zipfile import ZipFile
 
 import aiohttp
 from audino import HealthTracker
+from discord.ext.tasks import loop
 from malamar import Service as MalamarService
 
 from ...health import HealthStatusId
@@ -14,6 +16,9 @@ from .store import GtfsDataStore
 from .types import BRISBANE, Direction, LocationType, Route, RouteType, Service, Stop, StopTime, Trip
 
 __all__ = ("StaticGtfsHandler",)
+
+
+_log = logging.getLogger(__name__)
 
 
 GTFS_ZIP_URL = "https://gtfsrt.api.translink.com.au/GTFS/SEQ_GTFS.zip"
@@ -45,6 +50,8 @@ class StaticGtfsHandler(MalamarService):
         self._data_store = data_store
         super().__init__()
 
+        self.update_static_gtfs_data.add_exception_type(aiohttp.ClientError)
+
     # region: GTFS data loading
 
     async def download_gtfs_zip(self) -> ZipFile:
@@ -57,11 +64,13 @@ class StaticGtfsHandler(MalamarService):
         """Loads the static GTFS data from the zip file."""
         await self._data_store.clear()
 
+        _log.debug("Adding routes...")
         with zip.open(ROUTES_FILE) as f:
             reader = csv.DictReader(TextIOWrapper(f, "utf-8"))
             for row in reader:
                 await self._data_store.add_route(
                     Route(
+                        self._data_store,
                         id=row["route_id"],
                         short_name=row["route_short_name"],
                         long_name=row["route_long_name"],
@@ -78,11 +87,13 @@ class StaticGtfsHandler(MalamarService):
                     row["exception_type"] == "1"
                 )
 
+        _log.debug("Adding services...")
         with zip.open(SERVICES_FILE) as f:
             reader = csv.DictReader(TextIOWrapper(f, "utf-8"))
             for row in reader:
                 await self._data_store.add_service(
                     Service(
+                        self._data_store,
                         id=row["service_id"],
                         days=[DAYS.index(day) for day in DAYS if row[day] == "1"],
                         start_date=datetime.datetime.strptime(row["start_date"], "%Y%m%d").date(),
@@ -91,11 +102,13 @@ class StaticGtfsHandler(MalamarService):
                     )
                 )
 
+        _log.debug("Adding trips...")
         with zip.open(TRIPS_FILE) as f:
             reader = csv.DictReader(TextIOWrapper(f, "utf-8"))
             for row in reader:
                 await self._data_store.add_trip(
                     Trip(
+                        self._data_store,
                         id=row["trip_id"],
                         route_id=row["route_id"],
                         service_id=row["service_id"],
@@ -104,11 +117,13 @@ class StaticGtfsHandler(MalamarService):
                     )
                 )
 
+        _log.debug("Adding stops...")
         with zip.open(STOPS_FILE) as f:
             reader = csv.DictReader(TextIOWrapper(f, "utf-8"))
             for row in reader:
                 await self._data_store.add_stop(
                     Stop(
+                        self._data_store,
                         id=row["stop_id"],
                         name=row["stop_name"],
                         url=row["stop_url"],
@@ -118,11 +133,13 @@ class StaticGtfsHandler(MalamarService):
                     )
                 )
 
+        _log.debug("Adding stop times...")
         with zip.open(STOP_TIMES_FILE) as f:
             reader = csv.DictReader(TextIOWrapper(f, "utf-8"))
             for row in reader:
                 await self._data_store.add_stop_time(
                     StopTime(
+                        self._data_store,
                         trip_id=row["trip_id"],
                         sequence=int(row["stop_sequence"]),
                         stop_id=row["stop_id"],
@@ -132,33 +149,34 @@ class StaticGtfsHandler(MalamarService):
                     )
                 )
 
+        _log.debug("Creating trip instances...")
         await self._data_store.create_trip_instances()
 
+    @loop(seconds=UPDATE_CHECK_INTERVAL)
     async def update_static_gtfs_data(self) -> None:
         """Updates the static GTFS data from the TransLink API."""
-        zip = await self.download_gtfs_zip()
-        last_modified = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
-        for file in FILES:
-            last_modified = max(last_modified, datetime.datetime(*zip.getinfo(file).date_time, tzinfo=BRISBANE))
+        async with self._lock:
+            zip = await self.download_gtfs_zip()
+            last_modified = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+            for file in FILES:
+                last_modified = max(last_modified, datetime.datetime(*zip.getinfo(file).date_time, tzinfo=BRISBANE))
 
-        if last_modified > self._last_updated:
-            print("GTFS data out of date, updating...")
-            await self._health_tracker.set_health(HealthStatusId.GTFS_AVAILABLE, False)
-            await self.load_static_gtfs_data(zip)
-            self._last_updated = last_modified
-            await self._health_tracker.set_health(HealthStatusId.GTFS_AVAILABLE, True)
-            print("Successfully updated GTFS data")
+            if last_modified > self._last_updated:
+                _log.info("GTFS data out of date, updating...")
+                await self._health_tracker.set_health(HealthStatusId.GTFS_AVAILABLE, False)
+                await self.load_static_gtfs_data(zip)
+                self._last_updated = last_modified
+                await self._health_tracker.set_health(HealthStatusId.GTFS_AVAILABLE, True)
+                _log.info("Successfully updated GTFS data")
 
-        # Update trip instances.
-        await self._data_store.remove_old_trip_instances()
-        await self._data_store.create_trip_instances()
+            # Update trip instances.
+            await self._data_store.remove_old_trip_instances()
+            await self._data_store.create_trip_instances()
 
     # endregion
 
     async def start(self, *, timeout: float | None = None) -> None:
-        while True:
-            async with self._lock:
-                await self.update_static_gtfs_data()
-            await asyncio.sleep(UPDATE_CHECK_INTERVAL)
+        self.update_static_gtfs_data.start()
 
-    async def stop(self, *, timeout: float | None = None) -> None: ...
+    async def stop(self, *, timeout: float | None = None) -> None:
+        self.update_static_gtfs_data.stop()

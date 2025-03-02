@@ -1,4 +1,5 @@
 import datetime
+from difflib import get_close_matches
 from itertools import islice
 
 from malamar import Service
@@ -25,6 +26,9 @@ OTHER_MAX_NEXT_STOPS = 10
 __all__ = ("GtfsProvider",)
 
 
+MAX_RESULTS = 25
+
+
 class GtfsProvider(Service):
 
     def __init__(self, mediator: Mediator, data_store: GtfsDataStore) -> None:
@@ -35,12 +39,17 @@ class GtfsProvider(Service):
     # region: Mediator message handlers
 
     async def handle_search_stops_request(self, request: SearchStopsRequest) -> SearchStopsResult:
-        MAX_RESULTS = 25
-        matches = []
+        stops = self.data_store.get_stops_by_route_type(request.route_type)
 
-        # TODO: Implement search by route type
+        if request.query:
+            name_map = {stop.name: stop for stop in stops}
+            stops_names = get_close_matches(request.query, name_map, cutoff=0.1)
+            stops = [name_map[name] for name in stops_names]
 
-        return SearchStopsResult(stops=matches[:MAX_RESULTS])
+        if request.parent_only:
+            stops = [stop for stop in stops if stop.parent_stop is None]
+
+        return SearchStopsResult(stops=stops[:MAX_RESULTS])
 
     async def handle_get_next_services_request(self, request: GetNextServicesRequest) -> GetNextServicesResult:
         stop = self.data_store.get_stop(request.stop_id)
@@ -99,4 +108,7 @@ class GtfsProvider(Service):
         self.mediator.create_subscription(ChannelNames.GTFS, GetNextTrainsRequest, self.handle_get_next_trains_request)
         self.mediator.create_subscription(ChannelNames.GTFS, GetNextServicesRequest, self.handle_get_next_services_request)
 
-    async def stop(self, *, timeout: float | None = None) -> None: ...
+    async def stop(self, *, timeout: float | None = None) -> None:
+        self.mediator.unsubscribe(ChannelNames.GTFS, SearchStopsRequest, self.handle_search_stops_request)
+        self.mediator.unsubscribe(ChannelNames.GTFS, GetNextTrainsRequest, self.handle_get_next_trains_request)
+        self.mediator.unsubscribe(ChannelNames.GTFS, GetNextServicesRequest, self.handle_get_next_services_request)

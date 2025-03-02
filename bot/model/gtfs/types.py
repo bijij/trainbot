@@ -105,11 +105,21 @@ class GtfsData:
 
 
 class Route(GtfsData):
-    def __init__(self, id: str, *, short_name: str, long_name: str, type: RouteType) -> None:
+    def __init__(
+        self,
+        data_store: GtfsDataStore,
+        /,
+        id: str,
+        *,
+        short_name: str,
+        long_name: str,
+        type: RouteType,
+    ) -> None:
         self.id: str = id
         self.short_name: str = short_name
         self.long_name: str = long_name
         self.type: RouteType = type
+        super().__init__(data_store)
 
     @property
     def colour(self) -> Colour:
@@ -131,6 +141,8 @@ class Route(GtfsData):
 class Service(GtfsData):
     def __init__(
         self,
+        data_store: GtfsDataStore,
+        /,
         id: str,
         *,
         days: Iterable[int],
@@ -143,6 +155,7 @@ class Service(GtfsData):
         self.start_date: datetime.date = start_date
         self.end_date: datetime.date = end_date
         self.exceptions: dict[datetime.date, bool] = dict(exceptions)
+        super().__init__(data_store)
 
     def runs_on(self, date: datetime.date) -> bool:
         """Returns whether the service runs on the given date"""
@@ -159,6 +172,8 @@ class Service(GtfsData):
 class Trip(GtfsData):
     def __init__(
         self,
+        data_store: GtfsDataStore,
+        /,
         id: str,
         *,
         route_id: str,
@@ -171,6 +186,7 @@ class Trip(GtfsData):
         self._service_id: str = service_id
         self.headsign: str = headsign
         self.direction: Direction = direction
+        super().__init__(data_store)
 
     @property
     def route(self) -> Route:
@@ -189,6 +205,8 @@ class Stop(GtfsData):
 
     def __init__(
         self,
+        data_store: GtfsDataStore,
+        /,
         id: str,
         *,
         name: str,
@@ -203,6 +221,7 @@ class Stop(GtfsData):
         self.type: LocationType = type
         self.parent_stop_id: str | None = parent_stop_id
         self.platform_code: str | None = platform_code
+        super().__init__(data_store)
 
     @property
     def parent_stop(self) -> Stop | None:
@@ -214,6 +233,8 @@ class Stop(GtfsData):
 class StopTime(GtfsData):
     def __init__(
         self,
+        data_store: GtfsDataStore,
+        /,
         *,
         trip_id: str,
         sequence: int,
@@ -228,6 +249,7 @@ class StopTime(GtfsData):
         self.arrival_time: datetime.timedelta = arrival_time
         self.departure_time: datetime.timedelta = departure_time
         self.terminates: bool = terminates
+        super().__init__(data_store)
 
     @property
     def trip(self) -> Trip:
@@ -243,11 +265,28 @@ class StopTime(GtfsData):
 # region: GTFS Realtime types
 
 
-class StopTimeInstance(StopTime):
-    trip: TripInstance  # type: ignore
+class TripInstance(Trip):
+    def __init__(self, trip: Trip, date: datetime.date) -> None:
+        super().__init__(
+            trip.data_store,
+            id=trip.id,
+            route_id=trip.route.id,
+            service_id=trip.service.id,
+            headsign=trip.headsign,
+            direction=trip.direction,
+        )
+        self.date: datetime.date = date
+        self.cancelled: bool = False
 
+    @property
+    def stop_times(self) -> Sequence[StopTimeInstance]:
+        return self.data_store.get_stop_time_instances(self.id, self.date)
+
+
+class StopTimeInstance(StopTime):
     def __init__(self, stop_time: StopTime, date: datetime.date) -> None:
         super().__init__(
+            stop_time.data_store,
             trip_id=stop_time.trip.id,
             sequence=stop_time.sequence,
             stop_id=stop_time.stop.id,
@@ -277,27 +316,8 @@ class StopTimeInstance(StopTime):
         return self._actual_departure_time or self.scheduled_departure_time
 
     @property
-    def trip_instance(self) -> TripInstance:
-        return self.data_store.get_trip_instance(self.trip.id, self.date)
-
-
-class TripInstance(Trip):
-    stop_times: Sequence[StopTimeInstance]  # type: ignore
-
-    def __init__(self, trip: Trip, date: datetime.date) -> None:
-        super().__init__(
-            id=trip.id,
-            route_id=trip.route.id,
-            service_id=trip.service.id,
-            headsign=trip.headsign,
-            direction=trip.direction,
-        )
-        self.date: datetime.date = date
-        self.cancelled: bool = False
-
-    @property
-    def stop_times(self) -> Sequence[StopTimeInstance]:
-        return self.data_store.get_stop_time_instances(self.id, self.date)
+    def trip(self) -> TripInstance:
+        return self.data_store.get_trip_instance(self._trip_id, self.date)
 
 
 # endregion
