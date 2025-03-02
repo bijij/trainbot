@@ -23,5 +23,5 @@ app.add_singleton(Database)
 app.add_service(Gtfs)
 app.add_service(Bot)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(app.run())
