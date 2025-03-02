@@ -62,7 +62,11 @@ TRAIN_BOT = TrainBot(intents=discord.Intents.default())
 TRAIN_BOT_COMMANDS = discord.app_commands.CommandTree(TRAIN_BOT)
 
 
-TIMETABLE_GROUP = discord.app_commands.Group(name="timetable", description="Timetable commands")
+TIMETABLE_GROUP = discord.app_commands.Group(
+    name="timetable",
+    description="Timetable commands",
+    allowed_installs=discord.AppInstallationType.user,
+)
 TRAIN_BOT_COMMANDS.add_command(TIMETABLE_GROUP)
 
 
