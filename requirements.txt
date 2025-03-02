@@ -1,4 +1,5 @@
 discord.py >= 2.5.0
+protobuf >= 5.29.0
 rayquaza @ git+https://github.com/bijij/rayquaza.git
 audino @ git+https://github.com/bijij/audino.git
 malamar @ git+https://github.com/bijij/malamar.git

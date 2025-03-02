@@ -11,7 +11,7 @@ from rayquaza import Mediator
 from ..configuration import BotConfiguration
 from ..health import HealthStatusId
 from ..mediator import ChannelNames, GetNextServicesRequest, GetNextTrainsRequest, SearchStopsRequest
-from ..model.gtfs import Direction, RouteType
+from ..model.gtfs.types import Direction, RouteType
 from .timetable_renderer import render_timetable
 
 TRANSLINK_LOGO = "https://framework.transinfo.com.au/v2.5.2.12858/images/logos/MyTL-app-icon@180.png"
@@ -89,7 +89,7 @@ async def train(interaction: discord.Interaction, stop_id: str, direction: Direc
         return
 
     try:
-        request = GetNextTrainsRequest(stop_id=stop_id)
+        request = GetNextTrainsRequest(stop_id=stop_id, time=interaction.created_at)
         stop, down_trains, up_trains = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     except Exception as e:
         print(e)
@@ -138,7 +138,7 @@ async def bus(interaction: discord.Interaction, stop_id: str, private: bool = Fa
         return
 
     try:
-        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.BUS)
+        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.BUS, time=interaction.created_at)
         stop, buses = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     except Exception as e:
         print(e)
@@ -187,14 +187,14 @@ async def tram(interaction: discord.Interaction, stop_id: str, private: bool = F
         return
 
     try:
-        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.TRAM)
-        stop, buses = await interaction.client.mediator.request(ChannelNames.GTFS, request)
+        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.TRAM, time=interaction.created_at)
+        stop, trams = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     except Exception as e:
         print(e)
         await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
         return
 
-    timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, buses, RouteType.TRAM)}\n```"
+    timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, trams, RouteType.TRAM)}\n```"
 
     await interaction.response.send_message(
         embed=discord.Embed(
@@ -236,14 +236,14 @@ async def ferry(interaction: discord.Interaction, stop_id: str, private: bool = 
         return
 
     try:
-        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.FERRY)
-        stop, buses = await interaction.client.mediator.request(ChannelNames.GTFS, request)
+        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.FERRY, time=interaction.created_at)
+        stop, ferries = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     except Exception as e:
         print(e)
         await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
         return
 
-    timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, buses, RouteType.FERRY)}\n```"
+    timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, ferries, RouteType.FERRY)}\n```"
 
     await interaction.response.send_message(
         embed=discord.Embed(
