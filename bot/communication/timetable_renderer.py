@@ -388,7 +388,7 @@ def render_timetable(
 ) -> str:
     now = now.astimezone(BRISBANE)
 
-    if type is RouteType.BUS:
+    if type is RouteType.BUS or type is RouteType.FERRY:
         return render_bus_timetable(stop, now, services)
     elif type is RouteType.RAIL:
         assert direction is not None

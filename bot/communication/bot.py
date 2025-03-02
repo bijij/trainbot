@@ -211,6 +211,54 @@ async def _tram_autocomplete_stop_id(interaction: discord.Interaction, query: st
     return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
 
 
+@TIMETABLE_GROUP.command()
+@discord.app_commands.describe(
+    stop_id="The GTFS stop ID to retrieve the ferry timetable for.",
+    private="Whether to send the link privately.",
+)
+async def ferry(interaction: discord.Interaction, stop_id: str, private: bool = False) -> None:
+    """Retrieves the link to the ferry timetable for the given stop."""
+    assert isinstance(interaction.client, TrainBot)
+
+    if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
+        await interaction.response.send_message("GTFS data is currently unavailable.", ephemeral=True)
+        return
+
+    try:
+        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.FERRY)
+        stop, buses = await interaction.client.mediator.request(ChannelNames.GTFS, request)
+    except Exception as e:
+        print(e)
+        await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
+        return
+
+    timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, buses, RouteType.FERRY)}\n```"
+
+    await interaction.response.send_message(
+        embed=discord.Embed(
+            description=timetable,
+            timestamp=interaction.created_at,
+            color=discord.Colour.gold(),
+        ).set_author(
+            icon_url=TRANSLINK_LOGO,
+            name=f"{stop.name} Ferry Timetable",
+            url=stop.url,
+        ),
+        ephemeral=private,
+    )
+
+
+@tram.autocomplete("stop_id")
+async def _ferry_autocomplete_stop_id(interaction: discord.Interaction, query: str) -> list[discord.app_commands.Choice[str]]:
+    assert isinstance(interaction.client, TrainBot)
+
+    if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
+        return []
+
+    result = await interaction.client.mediator.request(ChannelNames.GTFS, SearchStopsRequest(query=query, route_type=RouteType.FERRY))
+    return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
+
+
 class Bot(Service):
 
     def __init__(
