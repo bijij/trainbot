@@ -119,7 +119,8 @@ async def _train_autocomplete_stop_id(interaction: discord.Interaction, query: s
     if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
         return []
 
-    result = await interaction.client.mediator.request(ChannelNames.GTFS, SearchStopsRequest(query=query, route_type=RouteType.RAIL))
+    request = SearchStopsRequest(query=query, route_type=RouteType.RAIL, parent_only=True)
+    result = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
 
 
@@ -167,7 +168,8 @@ async def _bus_autocomplete_stop_id(interaction: discord.Interaction, query: str
     if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
         return []
 
-    result = await interaction.client.mediator.request(ChannelNames.GTFS, SearchStopsRequest(query=query, route_type=RouteType.BUS))
+    request = SearchStopsRequest(query=query, route_type=RouteType.BUS)
+    result = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
 
 
@@ -215,7 +217,8 @@ async def _tram_autocomplete_stop_id(interaction: discord.Interaction, query: st
     if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
         return []
 
-    result = await interaction.client.mediator.request(ChannelNames.GTFS, SearchStopsRequest(query=query, route_type=RouteType.TRAM))
+    request = SearchStopsRequest(query=query, route_type=RouteType.TRAM, parent_only=True)
+    result = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
 
 
@@ -263,7 +266,8 @@ async def _ferry_autocomplete_stop_id(interaction: discord.Interaction, query: s
     if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
         return []
 
-    result = await interaction.client.mediator.request(ChannelNames.GTFS, SearchStopsRequest(query=query, route_type=RouteType.FERRY))
+    request = SearchStopsRequest(query=query, route_type=RouteType.FERRY)
+    result = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
 
 
