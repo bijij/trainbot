@@ -505,7 +505,7 @@ class Gtfs(MalamarService):
             (
                 stop_time_instance
                 for stop_time_instance in stop.get_stop_time_instances_between(now, lookahead_window)
-                if stop_time_instance.trip.route.type is request.route_type
+                if stop_time_instance.trip.route.type is request.route_type and not stop_time_instance.terminates
             ),
             MAX_NEXT_STOPS,
         )
@@ -521,7 +521,9 @@ class Gtfs(MalamarService):
             (
                 stop_time_instance
                 for stop_time_instance in stop.get_stop_time_instances_between(now, lookahead_window)
-                if stop_time_instance.trip.route.type is RouteType.RAIL and stop_time_instance.trip.direction == Direction.DOWNWARD
+                if stop_time_instance.trip.route.type is RouteType.RAIL
+                and stop_time_instance.trip.direction == Direction.DOWNWARD
+                and not stop_time_instance.terminates
             ),
             MAX_NEXT_STOPS,
         )
@@ -529,7 +531,9 @@ class Gtfs(MalamarService):
             (
                 stop_time_instance
                 for stop_time_instance in stop.get_stop_time_instances_between(now, lookahead_window)
-                if stop_time_instance.trip.route.type is RouteType.RAIL and stop_time_instance.trip.direction == Direction.UPWARD
+                if stop_time_instance.trip.route.type is RouteType.RAIL
+                and stop_time_instance.trip.direction == Direction.UPWARD
+                and not stop_time_instance.terminates
             ),
             MAX_NEXT_STOPS,
         )
@@ -542,7 +546,6 @@ class Gtfs(MalamarService):
         self.mediator.create_subscription(ChannelNames.GTFS, SearchStopsRequest, self.handle_search_stops_request)
         self.mediator.create_subscription(ChannelNames.GTFS, GetNextTrainsRequest, self.handle_get_next_trains_request)
         self.mediator.create_subscription(ChannelNames.GTFS, GetNextServicesRequest, self.handle_get_next_services_request)
-        
 
         await self.update_static_gtfs_data()
 

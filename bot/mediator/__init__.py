@@ -30,6 +30,7 @@ class SearchStopsRequest(SingleResponseRequest[SearchStopsResult]):
 
 # region: Get Next Services
 
+
 class GetNextServicesResult(NamedTuple):
     stop: Stop
     services: list[StopTimeInstance]
@@ -49,9 +50,8 @@ class GetNextTrainsResult(NamedTuple):
 
 
 class GetNextTrainsRequest(SingleResponseRequest[GetNextTrainsResult]):
-    def __init__(self, stop_id: str, route_type: RouteType):
+    def __init__(self, stop_id: str):
         self.stop_id: str = stop_id
-        self.route_type: RouteType = route_type
 
 
 # endregion

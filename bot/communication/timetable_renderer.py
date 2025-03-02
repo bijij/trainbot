@@ -335,8 +335,6 @@ def render_train_timetable(
     return text
 
 
-
-
 def render_bus_timetable(stop: Stop, now: datetime.datetime, services: Sequence[StopTimeInstance]) -> str:
     text = with_colour(Colour.WHITE, "Route  Destination                       Departs", bold=True) + "\n"
     for service in services:

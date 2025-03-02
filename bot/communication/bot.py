@@ -89,7 +89,7 @@ async def train(interaction: discord.Interaction, stop_id: str, direction: Direc
         return
 
     try:
-        request = GetNextTrainsRequest(stop_id=stop_id, route_type=RouteType.RAIL)
+        request = GetNextTrainsRequest(stop_id=stop_id)
         stop, down_trains, up_trains = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     except Exception as e:
         print(e)
