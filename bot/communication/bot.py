@@ -248,7 +248,7 @@ async def ferry(interaction: discord.Interaction, stop_id: str, private: bool = 
     )
 
 
-@tram.autocomplete("stop_id")
+@ferry.autocomplete("stop_id")
 async def _ferry_autocomplete_stop_id(interaction: discord.Interaction, query: str) -> list[discord.app_commands.Choice[str]]:
     assert isinstance(interaction.client, TrainBot)
 
