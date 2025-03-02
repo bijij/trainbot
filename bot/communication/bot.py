@@ -100,7 +100,9 @@ async def train(interaction: discord.Interaction, stop_id: str, direction: Direc
 
     await interaction.response.send_message(
         embed=discord.Embed(description=timetable, timestamp=interaction.created_at).set_author(
-            icon_url=TRANSLINK_LOGO, name=f"{stop.name} Train Timetable"
+            icon_url=TRANSLINK_LOGO,
+            name=f"{stop.name} Train Timetable",
+            url=stop.url,
         ),
         ephemeral=private,
     )
@@ -142,7 +144,9 @@ async def bus(interaction: discord.Interaction, stop_id: str, private: bool = Fa
 
     await interaction.response.send_message(
         embed=discord.Embed(description=timetable, timestamp=interaction.created_at).set_author(
-            icon_url=TRANSLINK_LOGO, name=f"{stop.name} Bus Timetable"
+            icon_url=TRANSLINK_LOGO,
+            name=f"{stop.name} Bus Timetable",
+            url=stop.url,
         ),
         ephemeral=private,
     )
@@ -156,6 +160,50 @@ async def _bus_autocomplete_stop_id(interaction: discord.Interaction, query: str
         return []
 
     result = await interaction.client.mediator.request(ChannelNames.GTFS, SearchStopsRequest(query=query, route_type=RouteType.BUS))
+    return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
+
+
+@TIMETABLE_GROUP.command()
+@discord.app_commands.describe(
+    stop_id="The GTFS stop ID to retrieve the tram timetable for.",
+    private="Whether to send the link privately.",
+)
+async def tram(interaction: discord.Interaction, stop_id: str, private: bool = False) -> None:
+    """Retrieves the link to the tram timetable for the given stop."""
+    assert isinstance(interaction.client, TrainBot)
+
+    if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
+        await interaction.response.send_message("GTFS data is currently unavailable.", ephemeral=True)
+        return
+
+    try:
+        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.TRAM)
+        stop, buses = await interaction.client.mediator.request(ChannelNames.GTFS, request)
+    except Exception as e:
+        print(e)
+        await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
+        return
+
+    timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, buses, RouteType.TRAM)}\n```"
+
+    await interaction.response.send_message(
+        embed=discord.Embed(description=timetable, timestamp=interaction.created_at).set_author(
+            icon_url=TRANSLINK_LOGO,
+            name=f"{stop.name} Tram Timetable",
+            url=stop.url,
+        ),
+        ephemeral=private,
+    )
+
+
+@bus.autocomplete("stop_id")
+async def _tram_autocomplete_stop_id(interaction: discord.Interaction, query: str) -> list[discord.app_commands.Choice[str]]:
+    assert isinstance(interaction.client, TrainBot)
+
+    if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
+        return []
+
+    result = await interaction.client.mediator.request(ChannelNames.GTFS, SearchStopsRequest(query=query, route_type=RouteType.TRAM))
     return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
 
 

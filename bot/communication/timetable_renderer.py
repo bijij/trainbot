@@ -1,6 +1,7 @@
 import datetime
 from collections.abc import Mapping, Sequence
 from enum import Flag, auto
+from random import choice
 from zoneinfo import ZoneInfo
 
 from ..model.gtfs import Colour, Direction, RouteType, Stop, StopTimeInstance
@@ -345,6 +346,38 @@ def render_bus_timetable(stop: Stop, now: datetime.datetime, services: Sequence[
     return text
 
 
+TRAM_FOOTERS = [
+    """\
+                For your safety
+        CCTV is in operation at all times\
+""",
+    """\
+                  NO SMOKING
+                                      No smoking\
+""",
+]
+
+
+def render_tram_timetable(stop: Stop, now: datetime.datetime, services: Sequence[StopTimeInstance]) -> str:
+    text = ""
+    for i in range(2):
+        if i < len(services):
+            service = services[i]
+
+            destination = service.trip.headsign
+
+            departs_minutes = (service.scheduled_departure_time - now).seconds // 60
+            departs = f"{departs_minutes} min"
+
+            text += f"Plat{service.stop.platform_code}  {destination:<35}{departs}\n"
+        else:
+            text += "\n"
+
+    text += choice(TRAM_FOOTERS)
+
+    return text
+
+
 def render_timetable(
     stop: Stop,
     now: datetime.datetime,
@@ -359,5 +392,7 @@ def render_timetable(
     elif type is RouteType.RAIL:
         assert direction is not None
         return render_train_timetable(stop, now, services, direction)
+    elif type is RouteType.TRAM:
+        return render_tram_timetable(stop, now, services)
     else:
         raise ValueError(f"Unsupported route type: {type}")

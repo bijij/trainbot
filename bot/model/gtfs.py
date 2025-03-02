@@ -149,7 +149,7 @@ class Route:
             case RouteType.BUS:
                 return BUS_COLOUR_MAP.get(self.short_name, Colour.PURPLE)
             case RouteType.FERRY:
-                return FERRY_COLOUR_MAP.get(self.short_name, Colour.GREY)
+                return FERRY_COLOUR_MAP.get(self.short_name, Colour.CYAN)
 
 
 class Service:
