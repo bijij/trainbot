@@ -14,6 +14,8 @@ from ..mediator import ChannelNames, GetNextServicesRequest, GetNextTrainsReques
 from ..model.gtfs import Direction, RouteType
 from .timetable_renderer import render_timetable
 
+TRANSLINK_LOGO = "https://framework.transinfo.com.au/v2.5.2.12858/images/logos/MyTL-app-icon@180.png"
+
 
 def _get_commands_hash(command_tree: discord.app_commands.CommandTree) -> int:
     """Generate a hashcode for the command tree."""
@@ -97,7 +99,9 @@ async def train(interaction: discord.Interaction, stop_id: str, direction: Direc
     timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, down_trains if direction is Direction.DOWNWARD else up_trains, RouteType.RAIL, direction)}\n```"
 
     await interaction.response.send_message(
-        embed=discord.Embed(description=timetable),
+        embed=discord.Embed(description=timetable, timestamp=interaction.created_at).set_author(
+            icon_url=TRANSLINK_LOGO, name=f"{stop.name} Train Timetable"
+        ),
         ephemeral=private,
     )
 
@@ -137,7 +141,9 @@ async def bus(interaction: discord.Interaction, stop_id: str, private: bool = Fa
     timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, buses, RouteType.BUS)}\n```"
 
     await interaction.response.send_message(
-        embed=discord.Embed(description=timetable),
+        embed=discord.Embed(description=timetable, timestamp=interaction.created_at).set_author(
+            icon_url=TRANSLINK_LOGO, name=f"{stop.name} Bus Timetable"
+        ),
         ephemeral=private,
     )
 
