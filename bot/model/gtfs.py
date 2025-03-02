@@ -18,7 +18,15 @@ from malamar import Service as MalamarService
 from rayquaza import Mediator
 
 from ..health import HealthStatusId
-from ..mediator import ChannelNames, GetNextTrainsRequest, GetNextTrainsResult, SearchStopsRequest, SearchStopsResult
+from ..mediator import (
+    ChannelNames,
+    GetNextServicesRequest,
+    GetNextServicesResult,
+    GetNextTrainsRequest,
+    GetNextTrainsResult,
+    SearchStopsRequest,
+    SearchStopsResult,
+)
 
 GTFS_ZIP = "https://gtfsrt.api.translink.com.au/GTFS/SEQ_GTFS.zip"
 
@@ -488,6 +496,22 @@ class Gtfs(MalamarService):
 
         return SearchStopsResult(stops=matches[:MAX_RESULTS])
 
+    async def handle_get_next_services_request(self, request: GetNextServicesRequest) -> GetNextServicesResult:
+        stop = STOPS[request.stop_id]
+        now = datetime.datetime.now(datetime.timezone.utc)
+        lookahead_window = now + datetime.timedelta(hours=LOOKAHEAD_HOURS)
+
+        services = islice(
+            (
+                stop_time_instance
+                for stop_time_instance in stop.get_stop_time_instances_between(now, lookahead_window)
+                if stop_time_instance.trip.route.type is request.route_type
+            ),
+            MAX_NEXT_STOPS,
+        )
+
+        return GetNextServicesResult(stop, services=list(services))
+
     async def handle_get_next_trains_request(self, request: GetNextTrainsRequest) -> GetNextTrainsResult:
         stop = STOPS[request.stop_id]
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -517,6 +541,8 @@ class Gtfs(MalamarService):
     async def start(self, *, timeout: float | None = None) -> None:
         self.mediator.create_subscription(ChannelNames.GTFS, SearchStopsRequest, self.handle_search_stops_request)
         self.mediator.create_subscription(ChannelNames.GTFS, GetNextTrainsRequest, self.handle_get_next_trains_request)
+        self.mediator.create_subscription(ChannelNames.GTFS, GetNextServicesRequest, self.handle_get_next_services_request)
+        
 
         await self.update_static_gtfs_data()
 

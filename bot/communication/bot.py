@@ -10,9 +10,9 @@ from rayquaza import Mediator
 
 from ..configuration import BotConfiguration
 from ..health import HealthStatusId
-from ..mediator import ChannelNames, GetNextTrainsRequest, SearchStopsRequest
-from .timetable_renderer import render_timetable
+from ..mediator import ChannelNames, GetNextServicesRequest, GetNextTrainsRequest, SearchStopsRequest
 from ..model.gtfs import Direction, RouteType
+from .timetable_renderer import render_timetable
 
 
 def _get_commands_hash(command_tree: discord.app_commands.CommandTree) -> int:
@@ -78,7 +78,7 @@ TRAIN_BOT_COMMANDS.add_command(TIMETABLE_GROUP)
     stop_id="The GTFS stop ID to retrieve the train timetable for.",
     private="Whether to send the link privately.",
 )
-async def train(interaction: discord.Interaction, stop_id: str, direction: Direction, private: bool = True) -> None:
+async def train(interaction: discord.Interaction, stop_id: str, direction: Direction, private: bool = False) -> None:
     """Retrieves the link to the train timetable for the given stop."""
     assert isinstance(interaction.client, TrainBot)
 
@@ -94,20 +94,62 @@ async def train(interaction: discord.Interaction, stop_id: str, direction: Direc
         await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
         return
 
+    timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, down_trains if direction is Direction.DOWNWARD else up_trains, RouteType.RAIL, direction)}\n```"
+
     await interaction.response.send_message(
-        f"```ansi\n{render_timetable(stop, interaction.created_at, down_trains if direction is Direction.DOWNWARD else up_trains, RouteType.RAIL, direction)}\n```",
+        embed=discord.Embed(description=timetable),
         ephemeral=private,
     )
 
 
 @train.autocomplete("stop_id")
-async def _autocomplete_stop_id(interaction: discord.Interaction, query: str) -> list[discord.app_commands.Choice[str]]:
+async def _train_autocomplete_stop_id(interaction: discord.Interaction, query: str) -> list[discord.app_commands.Choice[str]]:
     assert isinstance(interaction.client, TrainBot)
 
     if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
         return []
 
     result = await interaction.client.mediator.request(ChannelNames.GTFS, SearchStopsRequest(query=query, route_type=RouteType.RAIL))
+    return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
+
+
+@TIMETABLE_GROUP.command()
+@discord.app_commands.describe(
+    stop_id="The GTFS stop ID to retrieve the bus timetable for.",
+    private="Whether to send the link privately.",
+)
+async def bus(interaction: discord.Interaction, stop_id: str, private: bool = False) -> None:
+    """Retrieves the link to the bus timetable for the given stop."""
+    assert isinstance(interaction.client, TrainBot)
+
+    if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
+        await interaction.response.send_message("GTFS data is currently unavailable.", ephemeral=True)
+        return
+
+    try:
+        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.BUS)
+        stop, buses = await interaction.client.mediator.request(ChannelNames.GTFS, request)
+    except Exception as e:
+        print(e)
+        await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
+        return
+
+    timetable = f"```ansi\n{render_timetable(stop, interaction.created_at, buses, RouteType.BUS)}\n```"
+
+    await interaction.response.send_message(
+        embed=discord.Embed(description=timetable),
+        ephemeral=private,
+    )
+
+
+@bus.autocomplete("stop_id")
+async def _bus_autocomplete_stop_id(interaction: discord.Interaction, query: str) -> list[discord.app_commands.Choice[str]]:
+    assert isinstance(interaction.client, TrainBot)
+
+    if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
+        return []
+
+    result = await interaction.client.mediator.request(ChannelNames.GTFS, SearchStopsRequest(query=query, route_type=RouteType.BUS))
     return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops]
 
 

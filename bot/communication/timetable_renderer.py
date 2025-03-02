@@ -308,7 +308,7 @@ def render_train_timetable(
 
     if services:
 
-        text += "Service                        Platform  Departs\n"
+        text += "Service                      Platform    Departs\n"
 
         for service in services:
             scheduled_time = service.scheduled_departure_time.strftime("%H:%M")
@@ -324,7 +324,7 @@ def render_train_timetable(
             text += (
                 with_colour(
                     service.trip.route.colour,
-                    f"{scheduled_time:<7}{destination:<30}{service.stop.platform_code:<5}{departs:>6}",
+                    f"{scheduled_time:<7}{destination:<26}{service.stop.platform_code:<9}{departs:>6}",
                 )
                 + "\n"
             )
@@ -335,12 +335,14 @@ def render_train_timetable(
     return text
 
 
+
+
 def render_bus_timetable(stop: Stop, now: datetime.datetime, services: Sequence[StopTimeInstance]) -> str:
-    text = with_colour(Colour.WHITE, "Route   Destination                Departs", bold=True) + "\n"
+    text = with_colour(Colour.WHITE, "Route  Destination                       Departs", bold=True) + "\n"
     for service in services:
         departs_minutes = (service.scheduled_departure_time - now).seconds // 60
         departs = f"{departs_minutes} min"
-        text += with_colour(service.trip.route.colour, f"{service.trip.route.short_name:<8}{service.trip.headsign:<27}{departs}") + "\n"
+        text += with_colour(service.trip.route.colour, f"{service.trip.route.short_name:<7}{service.trip.headsign:<34}{departs:>6}") + "\n"
 
     return text
 
@@ -350,7 +352,7 @@ def render_timetable(
     now: datetime.datetime,
     services: Sequence[StopTimeInstance],
     type: RouteType,
-    direction: Direction | None,
+    direction: Direction | None = None,
 ) -> str:
     now = now.astimezone(BRISBANE)
 

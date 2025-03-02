@@ -28,6 +28,19 @@ class SearchStopsRequest(SingleResponseRequest[SearchStopsResult]):
 # endregion
 
 
+# region: Get Next Services
+
+class GetNextServicesResult(NamedTuple):
+    stop: Stop
+    services: list[StopTimeInstance]
+
+
+class GetNextServicesRequest(SingleResponseRequest[GetNextServicesResult]):
+    def __init__(self, stop_id: str, route_type: RouteType):
+        self.stop_id: str = stop_id
+        self.route_type: RouteType = route_type
+
+
 # region: Get Next Trains
 class GetNextTrainsResult(NamedTuple):
     stop: Stop
