@@ -62,9 +62,6 @@ STOP_TIME_INSTANCES_BY_DATE: dict[datetime.date, dict[str, list[StopTimeInstance
 )  # date -> trip_id -> StopTimeInstance
 STOP_TIME_INSTANCES_BY_STOP: dict[str, list[StopTimeInstance]] = defaultdict(list)  # stop_id -> [StopTimeInstance]
 
-LOOKAHEAD_HOURS = 4
-MAX_NEXT_STOPS = 6
-
 # region: GTFS static data types
 
 BRISBANE = ZoneInfo("Australia/Brisbane")
@@ -502,7 +499,7 @@ class Gtfs(MalamarService):
     async def handle_get_next_services_request(self, request: GetNextServicesRequest) -> GetNextServicesResult:
         stop = STOPS[request.stop_id]
         now = datetime.datetime.now(datetime.timezone.utc)
-        lookahead_window = now + datetime.timedelta(hours=LOOKAHEAD_HOURS)
+        lookahead_window = now + datetime.timedelta(hours=8)
 
         services = islice(
             (
@@ -510,7 +507,7 @@ class Gtfs(MalamarService):
                 for stop_time_instance in stop.get_stop_time_instances_between(now, lookahead_window)
                 if stop_time_instance.trip.route.type is request.route_type and not stop_time_instance.terminates
             ),
-            MAX_NEXT_STOPS,
+            10,
         )
 
         return GetNextServicesResult(stop, services=list(services))
@@ -518,7 +515,7 @@ class Gtfs(MalamarService):
     async def handle_get_next_trains_request(self, request: GetNextTrainsRequest) -> GetNextTrainsResult:
         stop = STOPS[request.stop_id]
         now = datetime.datetime.now(datetime.timezone.utc)
-        lookahead_window = now + datetime.timedelta(hours=LOOKAHEAD_HOURS)
+        lookahead_window = now + datetime.timedelta(hours=4)
 
         down_trains = islice(
             (
@@ -528,7 +525,7 @@ class Gtfs(MalamarService):
                 and stop_time_instance.trip.direction == Direction.DOWNWARD
                 and not stop_time_instance.terminates
             ),
-            MAX_NEXT_STOPS,
+            6,
         )
         up_trains = islice(
             (
@@ -538,7 +535,7 @@ class Gtfs(MalamarService):
                 and stop_time_instance.trip.direction == Direction.UPWARD
                 and not stop_time_instance.terminates
             ),
-            MAX_NEXT_STOPS,
+            6,
         )
 
         return GetNextTrainsResult(stop, down_trains=list(down_trains), up_trains=list(up_trains))
