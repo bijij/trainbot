@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+from zoneinfo import ZoneInfo
 
 import aiohttp
 from audino import HealthTracker
@@ -17,6 +18,8 @@ REFRESH_INTERVAL = 30
 
 CANCELLED_TRIP_SCHEDULE_RELATIONSHIP = 3
 SKIPPED_STOP_SCHEDULE_RELATIONSHIP = 1
+
+BRISBANE = ZoneInfo("Australia/Brisbane")
 
 _log = logging.getLogger(__name__)
 
@@ -58,13 +61,13 @@ class RealtimeGtfsHandler(Service):
             )
 
             if stop_time_update.arrival is not None and stop_time_update.arrival.time is not None:
-                arrival_time = datetime.datetime.fromtimestamp(stop_time_update.arrival.time, datetime.timezone.utc)
+                arrival_time = datetime.datetime.fromtimestamp(stop_time_update.arrival.time, datetime.timezone.utc).astimezone(BRISBANE)
                 await self._data_store.set_stop_time_actual_arrival_time(
                     trip_update.trip.trip_id, start_date, stop_time_update.stop_sequence, arrival_time
                 )
 
             if stop_time_update.departure is not None and stop_time_update.departure.time is not None:
-                departure_time = datetime.datetime.fromtimestamp(stop_time_update.departure.time, datetime.timezone.utc)
+                departure_time = datetime.datetime.fromtimestamp(stop_time_update.departure.time, datetime.timezone.utc).astimezone(BRISBANE)
                 await self._data_store.set_stop_time_actual_departure_time(
                     trip_update.trip.trip_id, start_date, stop_time_update.stop_sequence, departure_time
                 )
