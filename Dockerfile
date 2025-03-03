@@ -17,8 +17,8 @@ RUN pip install -r requirements.txt
 
 COPY . ./
 
-RUN protoc --proto_path=model/gtfs/proto \ 
-    --python_out=model/gtfs/proto \
-    model/gtfs/gtfs-realtime.proto
+RUN protoc --proto_path=bot/model/gtfs/proto \ 
+    --python_out=bot/model/gtfs/proto \
+    bot/model/gtfs/gtfs-realtime.proto
 
 ENTRYPOINT ["python", "app.py"]
