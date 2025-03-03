@@ -19,6 +19,6 @@ COPY . ./
 
 RUN protoc --proto_path=bot/model/gtfs/proto \ 
     --python_out=bot/model/gtfs/proto \
-    bot/model/gtfs/gtfs-realtime.proto
+    gtfs-realtime.proto
 
 ENTRYPOINT ["python", "app.py"]
