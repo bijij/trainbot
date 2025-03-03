@@ -106,7 +106,7 @@ END_OF_LINE = {
 
 def get_header_text(line: Line) -> Mapping[Direction, str]:
     if line is Line.INNER_CITY:
-        return {Direction.UPWARD: "Trains (1-6) South/West", Direction.DOWNWARD: "Trains (1-6) North"}
+        return {Direction.UPWARD: "(1-6) South/West", Direction.DOWNWARD: "(1-6) North"}
 
     outbound_directions = set()
     for line_ in Line:
