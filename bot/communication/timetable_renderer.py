@@ -337,6 +337,16 @@ def render_train_timetable(
     return text
 
 
+NO_SERVICES_TEXT = """\
+
+             THERE ARE NO SERVICES
+              DEPARTING THIS STOP
+              IN THE NEXT 8 HOURS
+
+
+"""
+
+
 def render_bus_timetable(stop: Stop, now: datetime.datetime, services: Sequence[StopTimeInstance]) -> str:
     text = with_colour(Colour.WHITE, "Route  Destination                       Departs", bold=True) + "\n"
     for service in services:
@@ -348,14 +358,7 @@ def render_bus_timetable(stop: Stop, now: datetime.datetime, services: Sequence[
         text += with_colour(service.trip.route.colour, f"{service.trip.route.short_name:<7}{service.trip.headsign:<34}{departs:>6}") + "\n"
 
     if not services:
-        text += with_colour(Colour.WHITE, """
-[0;0m
-        THERE ARE NO SERVICES
-         DEPARTING THIS STOP
-         IN THE NEXT 8 HOURS
-
-[0;0m
-        """)
+        text += with_colour(Colour.WHITE, NO_SERCICES_TEXT)
 
     return text
 
@@ -390,6 +393,7 @@ def render_tram_timetable(stop: Stop, now: datetime.datetime, stop_times: Sequen
             text += with_colour(Colour.GOLD, f"Plat{stop_time.stop.platform_code}  {destination:<35}{departs}\n")
         else:
             text += f"{ZWSP}\n"
+
     text += with_colour(Colour.WHITE, f"{now.strftime("%I:%M:%S %p").lower():^48}\n", bold = True)
     text += choice(TRAM_FOOTERS)
 
