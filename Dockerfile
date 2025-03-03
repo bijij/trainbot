@@ -15,10 +15,10 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
+COPY . ./
+
 RUN protoc --proto_path=model/gtfs/proto \ 
     --python_out=model/gtfs/proto \
     model/gtfs/gtfs-realtime.proto
-
-COPY . ./
 
 ENTRYPOINT ["python", "app.py"]
