@@ -394,7 +394,9 @@ def render_tram_timetable(stop: Stop, now: datetime.datetime, stop_times: Sequen
         else:
             text += f"{ZWSP}\n"
 
-    text += with_colour(Colour.WHITE, f"{now.strftime("%I:%M:%S %p").lower():^48}\n", bold = True)
+    now = 
+
+    text += with_colour(Colour.WHITE, f"{now.astimezone(BRISBANE).strftime("%I:%M:%S %p").lower():^48}\n", bold = True)
     text += choice(TRAM_FOOTERS)
 
     return text
