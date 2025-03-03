@@ -4,7 +4,7 @@ from enum import Flag, auto
 from random import choice
 from zoneinfo import ZoneInfo
 
-from ..model.gtfs import Colour, Direction, RouteType, Stop, StopTimeInstance
+from ..model.gtfs.types import Colour, Direction, RouteType, Stop, StopTimeInstance
 
 ANSI_ESCAPE = "\033[0;"
 ANSI_RESET = f"{ANSI_ESCAPE}0m"
@@ -317,11 +317,11 @@ def render_train_timetable(
 
             destination = service.trip.stop_times[-1].stop.name.split(" station,", 1)[0]
 
-            departs_minutes = (service.scheduled_departure_time - now).seconds // 60
+            departs_minutes = (service.actual_departure_time - now).seconds // 60
             if departs_minutes < 60:
                 departs = f"{departs_minutes} min"
             else:
-                departs = service.scheduled_departure_time.strftime("%H:%M")
+                departs = service.actual_departure_time.strftime("%H:%M")
 
             text += (
                 with_colour(
@@ -340,8 +340,11 @@ def render_train_timetable(
 def render_bus_timetable(stop: Stop, now: datetime.datetime, services: Sequence[StopTimeInstance]) -> str:
     text = with_colour(Colour.WHITE, "Route  Destination                       Departs", bold=True) + "\n"
     for service in services:
-        departs_minutes = (service.scheduled_departure_time - now).seconds // 60
-        departs = f"{departs_minutes} min"
+        departs_minutes = (service.actual_departure_time - now).seconds // 60
+        if departs_minutes < 60:
+            departs = f"{departs_minutes} min"
+        else:
+            departs = service.actual_departure_time.strftime("%H:%M")
         text += with_colour(service.trip.route.colour, f"{service.trip.route.short_name:<7}{service.trip.headsign:<34}{departs:>6}") + "\n"
 
     return text
@@ -359,18 +362,21 @@ TRAM_FOOTERS = [
 ]
 
 
-def render_tram_timetable(stop: Stop, now: datetime.datetime, services: Sequence[StopTimeInstance]) -> str:
+def render_tram_timetable(stop: Stop, now: datetime.datetime, stop_times: Sequence[StopTimeInstance]) -> str:
     text = ""
     for i in range(2):
-        if i < len(services):
-            service = services[i]
+        if i < len(stop_times):
+            stop_time = stop_times[i]
 
-            destination = service.trip.headsign
+            destination = stop_time.trip.headsign
 
-            departs_minutes = (service.scheduled_departure_time - now).seconds // 60
-            departs = f"{departs_minutes} min"
+            departs_minutes = (stop_time.actual_departure_time - now).seconds // 60
+            if departs_minutes < 60:
+                departs = f"{departs_minutes} min"
+            else:
+                departs = stop_time.actual_departure_time.strftime("%H:%M")
 
-            text += with_colour(Colour.GOLD, f"Plat{service.stop.platform_code}  {destination:<35}{departs}\n")
+            text += with_colour(Colour.GOLD, f"Plat{stop_time.stop.platform_code}  {destination:<35}{departs}\n")
         else:
             text += f"{ZWSP}\n"
 

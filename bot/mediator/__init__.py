@@ -1,11 +1,23 @@
 from __future__ import annotations
 
+import datetime
 from typing import TYPE_CHECKING, NamedTuple
 
 from rayquaza import SingleResponseRequest
 
 if TYPE_CHECKING:
-    from ..model.gtfs import RouteType, Stop, StopTimeInstance
+    from ..model.gtfs.types import RouteType, Stop, StopTimeInstance
+
+
+__all__ = (
+    "ChannelNames",
+    "SearchStopsRequest",
+    "SearchStopsResult",
+    "GetNextServicesRequest",
+    "GetNextServicesResult",
+    "GetNextTrainsRequest",
+    "GetNextTrainsResult",
+)
 
 
 class ChannelNames:
@@ -38,8 +50,9 @@ class GetNextServicesResult(NamedTuple):
 
 
 class GetNextServicesRequest(SingleResponseRequest[GetNextServicesResult]):
-    def __init__(self, stop_id: str, route_type: RouteType):
+    def __init__(self, stop_id: str, time: datetime.datetime, route_type: RouteType):
         self.stop_id: str = stop_id
+        self.time: datetime.datetime = time
         self.route_type: RouteType = route_type
 
 
@@ -51,8 +64,9 @@ class GetNextTrainsResult(NamedTuple):
 
 
 class GetNextTrainsRequest(SingleResponseRequest[GetNextTrainsResult]):
-    def __init__(self, stop_id: str):
+    def __init__(self, stop_id: str, time: datetime.datetime):
         self.stop_id: str = stop_id
+        self.time: datetime.datetime = time
 
 
 # endregion

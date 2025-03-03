@@ -10,10 +10,14 @@ WORKDIR /app
 
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
-    git
+    git protobuf-compiler
 
 COPY requirements.txt .
 RUN pip install -r requirements.txt
+
+RUN protoc --proto_path=model/gtfs/proto \ 
+    --python_out=model/gtfs/proto \
+    model/gtfs/gtfs-realtime.proto
 
 COPY . ./
 
