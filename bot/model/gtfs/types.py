@@ -6,8 +6,6 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
-from ...utils import MISSING
-
 if TYPE_CHECKING:
     from .store import GtfsDataStore
 

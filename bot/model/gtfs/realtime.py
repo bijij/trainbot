@@ -83,7 +83,8 @@ class RealtimeGtfsHandler(Service):
                         try:
                             await self.handle_trip_update(entity.trip_update)
                         except Exception:
-                            _log.exception("Failed to handle trip update")
+                            # _log.debug("Failed to handle trip update")
+                            pass
 
     async def handle_health_update(self, health_status_id: str, healthy: bool) -> None:
         async with self._lock:

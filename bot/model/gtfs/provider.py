@@ -81,7 +81,7 @@ class GtfsProvider(Service):
                 if not stop_time.skipped
                 and not stop_time.trip.cancelled
                 and stop_time.trip.route.type is RouteType.RAIL
-                and stop_time.trip.direction == Direction.DOWNWARD
+                and stop_time.trip.direction is Direction.DOWNWARD
                 and not stop_time.terminates
             ),
             TRAIN_MAX_NEXT_STOPS,
@@ -92,8 +92,8 @@ class GtfsProvider(Service):
                 for stop_time in self.data_store.get_stop_time_instances_between(request.stop_id, request.time, lookahead_window)
                 if not stop_time.skipped
                 and not stop_time.trip.cancelled
-                and stop_time.trip.route is RouteType.RAIL
-                and stop_time.trip.direction == Direction.UPWARD
+                and stop_time.trip.route.type is RouteType.RAIL
+                and stop_time.trip.direction is Direction.UPWARD
                 and not stop_time.terminates
             ),
             TRAIN_MAX_NEXT_STOPS,
