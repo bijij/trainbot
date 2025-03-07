@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from rayquaza import SingleResponseRequest
 
 if TYPE_CHECKING:
-    from ..model.gtfs.types import RouteType, Stop, StopTimeInstance
+    from ..gtfs.types import RouteType, Stop, StopTimeInstance
 
 
 __all__ = (

@@ -1,0 +1,5 @@
+from .gtfs import TIMETABLE_GROUP
+
+ALL_COMMANDS = [
+    TIMETABLE_GROUP,
+]
