@@ -1,9 +1,9 @@
 import datetime
-from difflib import get_close_matches
 from itertools import islice
 
 from audino import HealthTracker
 from malamar import Service
+from rapidfuzz import fuzz, process, utils
 from rayquaza import Mediator
 
 from ..configuration import Configuration
@@ -58,17 +58,18 @@ class GtfsProvider(Service):
         if not await self._health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
             raise RuntimeError("GTFS data is currently unavailable.")
 
-        stops = self._data_store.get_stops_by_route_type(request.route_type)
+        stops = {stop: stop.name for stop in self._data_store.get_stops_by_route_type(request.route_type)}
+        results = []
 
-        if request.query:
-            name_map = {stop.name: stop for stop in stops}
-            stops_names = get_close_matches(request.query, name_map, cutoff=0.1)
-            stops = [name_map[name] for name in stops_names]
+        if (
+            stop := self._data_store.get_stop(request.query, error_on_missing=False)
+        ) is not None and self._data_store.stop_has_route_with_type(stop.id, request.route_type):
+            results.append(stop)
 
-        if request.parent_only:
-            stops = [stop for stop in stops if stop.parent_stop is None]
+        for _, _, stop in process.extract(request.query, stops, scorer=fuzz.WRatio, processor=utils.default_process, limit=request.limit):
+            results.append(stop)
 
-        return SearchStopsResult(stops=stops)
+        return SearchStopsResult(stops=results[: request.limit])
 
     async def _handle_get_next_services_request(self, request: GetNextServicesRequest) -> GetNextServicesResult:
         if not await self._health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):

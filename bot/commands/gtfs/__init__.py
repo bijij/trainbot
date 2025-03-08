@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 TRANSLINK_LOGO = "https://framework.transinfo.com.au/v2.5.2.12858/images/logos/MyTL-app-icon@180.png"
 
+MAX_SEARCH_RESULTS = 25
 
 TIMETABLE_GROUP = discord.app_commands.Group(
     name="timetable",
@@ -32,9 +33,9 @@ def _autocomplete(
         if not await interaction.client.health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
             return []
 
-        request = SearchStopsRequest(query=query, route_type=route_type, parent_only=parent_only)
+        request = SearchStopsRequest(query=query, route_type=route_type, parent_only=parent_only, limit=MAX_SEARCH_RESULTS)
         result = await interaction.client.mediator.request(ChannelNames.GTFS, request)
-        return [discord.app_commands.Choice(name=stop.name, value=stop.id) for stop in result.stops][:25]
+        return [discord.app_commands.Choice(name=f"{stop.name} ({stop.id})", value=stop.id) for stop in result.stops]
 
     return inner
 

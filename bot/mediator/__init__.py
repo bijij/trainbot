@@ -32,10 +32,11 @@ class SearchStopsResult(NamedTuple):
 
 
 class SearchStopsRequest(SingleResponseRequest[SearchStopsResult]):
-    def __init__(self, query: str, route_type: RouteType, parent_only: bool = False):
+    def __init__(self, query: str, route_type: RouteType, parent_only: bool = False, limit: int | None = None):
         self.query: str = query
         self.route_type: RouteType = route_type
         self.parent_only: bool = parent_only
+        self.limit: int | None = limit
 
 
 # endregion
