@@ -58,7 +58,11 @@ class GtfsProvider(Service):
         if not await self._health_tracker.get_health(HealthStatusId.GTFS_AVAILABLE):
             raise RuntimeError("GTFS data is currently unavailable.")
 
-        stops = {stop: stop.name for stop in self._data_store.get_stops_by_route_type(request.route_type)}
+        stops = {
+            stop: stop.name
+            for stop in self._data_store.get_stops_by_route_type(request.route_type)
+            if stop.parent_stop is None or not request.parent_only
+        }
         results = []
 
         if (
