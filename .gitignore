@@ -9,3 +9,6 @@ __pycache__/
 
 # Protobuf compiled files
 *_pb2.py
+
+# dynamic files
+config/command_hash
