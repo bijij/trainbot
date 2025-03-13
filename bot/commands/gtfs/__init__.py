@@ -53,7 +53,7 @@ def _with_code_block(text: str, language: str) -> str:
 async def train(
     interaction: discord.Interaction[TrainBot],
     stop_id: str,
-    direction: Direction,
+    direction: Direction | None = None,
     private: bool = False,
 ) -> None:
     """Retrieves the link to the train timetable for the given stop."""
@@ -69,7 +69,8 @@ async def train(
         raise
 
     now = interaction.created_at.astimezone(interaction.client.config.local_timezone)
-    trains = down_trains if direction is Direction.DOWNWARD else up_trains
+
+    trains = [*down_trains, *up_trains]
     lookahead_hours = interaction.client.config.lookahead_window[RouteType.RAIL]
     timetable = _with_code_block(render_timetable(stop, now, trains, RouteType.RAIL, lookahead_hours, direction), "ansi")
 
