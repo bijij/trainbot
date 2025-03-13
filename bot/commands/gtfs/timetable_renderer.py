@@ -376,7 +376,7 @@ def _render_train_bar(now: datetime.datetime, service: StopTimeInstance) -> str:
 
     return (
         _with_formatting(
-            f"{scheduled_time:<7}{destination:<{SCREEN_WIDTH - 22}}{service.stop.platform_code:<9}{departs:>6}",
+            f"{scheduled_time:<7}{destination:<{SCREEN_WIDTH - 20}}{service.stop.platform_code:<7}{departs:>6}",
             service.trip.route.colour,
         )
         + "\n"
@@ -472,7 +472,7 @@ def _render_train_timetable(
         services = upward_services if direction is Direction.UPWARD else downward_services
 
         if services:
-            text += "Service                      Platform    Departs\n"
+            text += "Service                        Platform  Departs\n"
             text += _render_train_bars(now, services, MAX_NEXT_TRAINS)
 
         else:
@@ -482,7 +482,7 @@ def _render_train_timetable(
         if LINES[stop.id.lower()] is _Line.INNER_CITY:
             text = (
                 _with_formatting(f"[{now.strftime("%I:%M:%S")}]", Colour.GOLD, bold=True)
-                + _with_formatting(f"{f"Next 3 Northbound and Southbound Trains":^{SCREEN_WIDTH - 10}}", Colour.WHITE)
+                + _with_formatting(f"{f"Next 3 Trains North and South/West":^{SCREEN_WIDTH - 10}}", Colour.WHITE)
                 + "\n"
             )
         else:
@@ -492,7 +492,7 @@ def _render_train_timetable(
                 + "\n"
             )
 
-        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[inbound_direction]:<{SCREEN_WIDTH - 31}}"}Platform    Departs\n"
+        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[inbound_direction]:<{SCREEN_WIDTH - 29}}"}Platform  Departs\n"
         inbound_services = upward_services if inbound_direction is Direction.UPWARD else downward_services
         if inbound_services:
             text += _render_train_bars(now, inbound_services, MAX_NEXT_TRAINS // 2)
@@ -501,7 +501,7 @@ def _render_train_timetable(
                 _render_no_trains_text(up_text if inbound_direction is Direction.UPWARD else down_text, lookahead_hours, slim=True) + "\n"
             )
 
-        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[outbound_direction]:<{SCREEN_WIDTH - 31}}"}Platform    Departs\n"
+        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[outbound_direction]:<{SCREEN_WIDTH - 29}}"}Platform  Departs\n"
         outbound_services = upward_services if outbound_direction is Direction.UPWARD else downward_services
         if outbound_services:
             text += _render_train_bars(now, outbound_services, MAX_NEXT_TRAINS // 2)
