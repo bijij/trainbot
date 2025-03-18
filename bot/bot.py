@@ -64,7 +64,6 @@ class TrainBot(discord.Client, Service):
         )
 
         for command in commands:
-            print("Adding command", command)
             self.command_tree.add_command(command)
 
         discord.utils.setup_logging()

@@ -61,7 +61,7 @@ class GtfsProvider(Service):
         stops = {
             stop: stop.name
             for stop in self._data_store.get_stops_by_route_type(request.route_type)
-            if stop.parent_stop is None or not request.parent_only
+            if stop.parent_station is None or not request.parent_only
         }
         results = []
 

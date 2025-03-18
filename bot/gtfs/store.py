@@ -1,13 +1,33 @@
 import datetime
-from asyncio import Lock
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Literal, overload
 
 from ..configuration import Configuration
-from .types import Route, RouteType, Service, Stop, StopTime, StopTimeInstance, Trip, TripInstance
+from .types import *
 
 __all__ = ("GtfsDataStore",)
+
+
+_DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+
+def _load_time(time: str) -> datetime.timedelta:
+    """Loads a time from a string in the format HH:MM:SS.
+
+    Parameters
+    ----------
+    time : str
+        The time to load.
+
+    Returns
+    -------
+    datetime.timedelta
+        The loaded time as a timedelta.
+    """
+
+    hours, minutes, seconds = map(int, time.split(":"))
+    return datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
 
 
 class GtfsDataStore:
@@ -24,18 +44,18 @@ class GtfsDataStore:
         config : Configuration
             Configuration data required for the data store.
         """
-        self._lock = Lock()
         self._config = config
 
         # Static data
         self._routes: dict[str, Route] = {}
+        self._services_exceptions: dict[str, dict[datetime.date, bool]] = defaultdict(dict)
         self._services: dict[str, Service] = {}
         self._trips: dict[str, Trip] = {}
         self._trips_by_route: dict[str, list[Trip]] = defaultdict(list)
         self._trips_by_service: dict[str, list[Trip]] = defaultdict(list)
         self._stops: dict[str, Stop] = {}
+        self._children_stops: dict[str, list[Stop]] = defaultdict(list)
         self._stop_times_by_trip: dict[str, list[StopTime]] = defaultdict(list)
-        self._stop_times_by_stop: dict[str, list[StopTime]] = defaultdict(list)
         self._route_types_by_stop: dict[str, set[RouteType]] = defaultdict(set)
 
         # Real-time data
@@ -45,132 +65,167 @@ class GtfsDataStore:
         )
         self._stop_time_instances_by_stop: dict[str, list[StopTimeInstance]] = defaultdict(list)
 
-    async def clear(self) -> None:
+    def clear(self) -> None:
         """Clears all data from the data store."""
-        async with self._lock:
-            self._routes.clear()
-            self._services.clear()
-            self._trips.clear()
-            self._trips_by_route.clear()
-            self._trips_by_service.clear()
-            self._stops.clear()
-            self._stop_times_by_trip.clear()
-            self._stop_times_by_stop.clear()
-            self._trip_instances_by_date.clear()
-            self._stop_time_instances_by_date.clear()
-            self._stop_time_instances_by_stop.clear()
+        self._routes.clear()
+        self._services.clear()
+        self._trips.clear()
+        self._trips_by_route.clear()
+        self._trips_by_service.clear()
+        self._stops.clear()
+        self._stop_times_by_trip.clear()
+        self._trip_instances_by_date.clear()
+        self._stop_time_instances_by_date.clear()
+        self._stop_time_instances_by_stop.clear()
 
-    async def add_route(self, route: Route) -> None:
+    def add_route(self, data: RouteData) -> None:
         """Adds a route to the data store and updates the route instances.
 
         Parameters
         ----------
-        route : Route
-            The route to add to the data store.
+        data : RouteData
+            The route data to add to the data store.
         """
-        async with self._lock:
-            self._routes[route.id.lower()] = route.register(self)
+        route = Route(
+            id=data["route_id"].lower(),
+            short_name=data["route_short_name"],
+            long_name=data["route_long_name"],
+            type=RouteType(int(data["route_type"])),
+            colour=data["route_color"],
+        )
 
-    async def add_service(self, service: Service) -> None:
+        self._routes[route.id] = route.register(self)
+
+    def add_service_exception(self, data: CalendarDateData) -> None:
+        """Adds a service exception to the data store.
+
+        Parameters
+        ----------
+        data : CalendarDateData
+            The service exception data to add to the data store
+        """
+        date = datetime.datetime.strptime(data["date"], "%Y%m%d").date()
+        self._services_exceptions[data["service_id"]][date] = data["exception_type"] == 1
+
+    def add_service(self, data: CalendarData) -> None:
         """Adds a service to the data store and updates the service instances.
 
         Parameters
         ----------
-        service : Service
-            The service to add to the data store.
+        data : CalendarData
+            The service data to add to the data store.
         """
-        async with self._lock:
-            self._services[service.id.lower()] = service.register(self)
+        service = Service(
+            id=data["service_id"].lower(),
+            days=[_DAYS.index(day) for day in _DAYS if data[day] == "1"],
+            start_date=datetime.datetime.strptime(data["start_date"], "%Y%m%d").date(),
+            end_date=datetime.datetime.strptime(data["end_date"], "%Y%m%d").date(),
+        )
 
-    async def add_trip(self, trip: Trip) -> None:
+        self._services[service.id] = service.register(self)
+
+    def add_trip(self, data: TripData) -> None:
         """Adds a trip to the data store and updates the trip instances.
 
         Parameters
         ----------
-        trip : Trip
-            The trip to add to the data store.
+        data : TripData
+            The trip data to add to the data store.
         """
-        async with self._lock:
-            self._trips[trip.id.lower()] = trip.register(self)
-            self._trips_by_route[trip.route.id.lower()].append(trip)
-            self._trips_by_service[trip.service.id.lower()].append(trip)
+        trip = Trip(
+            id=data["trip_id"].lower(),
+            route_id=data["route_id"].lower(),
+            service_id=data["service_id"].lower(),
+            headsign=data["trip_headsign"],
+            direction=Direction.UPWARD if data["direction_id"] == "1" else Direction.DOWNWARD,
+        )
 
-    async def add_stop(self, stop: Stop) -> None:
+        self._trips[trip.id] = trip.register(self)
+        self._trips_by_route[trip._route_id].append(trip)
+        self._trips_by_service[trip._service_id].append(trip)
+
+    def add_stop(self, data: StopData) -> None:
         """Adds a stop to the data store and updates the stop instances.
 
         Parameters
         ----------
-        stop : Stop
-            The stop to add to the data store.
+        data : StopData
+            The stop data to add to the data store.
         """
-        async with self._lock:
-            self._stops[stop.id.lower()] = stop.register(self)
+        stop = Stop(
+            id=data["stop_id"].lower(),
+            name=data["stop_name"],
+            url=data["stop_url"],
+            type=LocationType(int(data["location_type"])),
+            parent_station_id=data["parent_station"].lower() or None,
+            platform_code=data["platform_code"] or None,
+        )
 
-    async def add_stop_time(self, stop_time: StopTime) -> None:
+        self._stops[stop.id] = stop.register(self)
+        if stop._parent_station_id is not None:
+            self._children_stops[stop._parent_station_id].append(stop)
+
+    def add_stop_time(self, data: StopTimeData) -> None:
         """Adds a stop time to the data store and updates the stop time instances.
 
         Parameters
         ----------
-        stop_time : StopTime
-            The stop time to add to the data store.
+        data : StopTimeData
+            The stop time data to add to the data store.
         """
-        async with self._lock:
-            stop_time = stop_time.register(self)
+        stop_time = StopTime(
+            trip_id=data["trip_id"].lower(),
+            sequence=int(data["stop_sequence"]),
+            stop_id=data["stop_id"].lower(),
+            arrival_time=_load_time(data["arrival_time"]),
+            departure_time=_load_time(data["departure_time"]),
+            terminates=data["pickup_type"] == "1",
+        ).register(self)
 
-            route_type = self._routes[stop_time.trip.route.id.lower()].type
-            self._stop_times_by_trip[stop_time.trip.id.lower()].append(stop_time)
-            self._route_types_by_stop[stop_time.stop.id.lower()].add(route_type)
-            stop = stop_time.stop
-            while stop is not None:
-                self._stop_times_by_stop[stop.id.lower()].append(stop_time)
-                self._route_types_by_stop[stop.id.lower()].add(route_type)
-                stop = self.get_stop(stop.parent_stop_id or "", error_on_missing=False)
+        self._stop_times_by_trip[stop_time._trip_id].append(stop_time)
+        route_type = self._routes[stop_time.trip._route_id].type
+        self._route_types_by_stop[stop_time._stop_id].add(route_type)
 
-    async def remove_old_trip_instances(self) -> None:
+    def remove_old_trip_instances(self) -> None:
         """Removes trip instances for dates older than yesterday."""
-        async with self._lock:
-            yesterday = datetime.date.today() - datetime.timedelta(days=1)
+        yesterday = datetime.date.today() - datetime.timedelta(days=1)
 
-            for date in list(self._trip_instances_by_date.keys()):
-                if date < yesterday:
-                    del self._trip_instances_by_date[date]
+        for date in list(self._trip_instances_by_date.keys()):
+            if date < yesterday:
+                del self._trip_instances_by_date[date]
 
-            for date in list(self._stop_time_instances_by_date.keys()):
-                if date < yesterday:
-                    del self._stop_time_instances_by_date[date]
+        for date in list(self._stop_time_instances_by_date.keys()):
+            if date < yesterday:
+                del self._stop_time_instances_by_date[date]
 
-            for stop_id, stop_time_instances in self._stop_time_instances_by_stop.items():
-                self._stop_time_instances_by_stop[stop_id.lower()] = [
-                    stop_time_instance for stop_time_instance in stop_time_instances if stop_time_instance.date >= yesterday
-                ]
+        for stop_id, stop_time_instances in self._stop_time_instances_by_stop.items():
+            self._stop_time_instances_by_stop[stop_id] = [
+                stop_time_instance for stop_time_instance in stop_time_instances if stop_time_instance.date >= yesterday
+            ]
 
-    async def create_trip_instances(self) -> None:
+    def create_trip_instances(self) -> None:
         """Creates the trip instances for yesterday, today, and tomorrow."""
-        async with self._lock:
-            today = datetime.date.today()
-            yesterday = today - datetime.timedelta(days=1)
-            tomorrow = today + datetime.timedelta(days=1)
+        today = datetime.date.today()
+        yesterday = today - datetime.timedelta(days=1)
+        tomorrow = today + datetime.timedelta(days=1)
 
-            dates = [yesterday, today, tomorrow]
-            for date in dates:
-                if not self._trip_instances_by_date[date]:
-                    for trip in self._trips.values():
-                        service = self._services[trip.service.id.lower()]
-                        if service.runs_on(date):
-                            self._trip_instances_by_date[date][trip.id.lower()] = TripInstance(trip, date).register(self)
-                            for stop_time in self._stop_times_by_trip[trip.id.lower()]:
-                                self._stop_time_instances_by_date[date][trip.id.lower()][stop_time.sequence] = StopTimeInstance(
-                                    stop_time, date
-                                ).register(self)
+        dates = [yesterday, today, tomorrow]
+        for date in dates:
+            if not self._trip_instances_by_date[date]:
+                for trip_id, trip in self._trips.items():
+                    service = self._services[trip._service_id]
+                    if service.runs_on(date):
+                        self._trip_instances_by_date[date][trip_id] = TripInstance(trip, date).register(self)
+                        for stop_time in self._stop_times_by_trip[trip_id]:
+                            self._stop_time_instances_by_date[date][trip_id][stop_time.sequence] = StopTimeInstance(
+                                stop_time, date
+                            ).register(self)
 
-                    for stop_time_instances in self._stop_time_instances_by_date[date].values():
-                        for stop_time_instance in stop_time_instances.values():
-                            stop = stop_time_instance.stop
-                            while stop is not None:
-                                self._stop_time_instances_by_stop[stop.id.lower()].append(stop_time_instance)
-                                stop = self._stops.get((stop.parent_stop_id or "").lower())
+                for stop_time_instances in self._stop_time_instances_by_date[date].values():
+                    for stop_time_instance in stop_time_instances.values():
+                        self._stop_time_instances_by_stop[stop_time_instance._stop_id].append(stop_time_instance)
 
-    async def set_trip_instance_status(self, trip_id: str, date: datetime.date, cancelled: bool) -> None:
+    def set_trip_instance_status(self, trip_id: str, date: datetime.date, cancelled: bool) -> None:
         """Sets the status of a trip instance.
 
         Parameters
@@ -182,10 +237,9 @@ class GtfsDataStore:
         cancelled : bool
             Whether the trip instance is cancelled.
         """
-        async with self._lock:
-            self._trip_instances_by_date[date][trip_id.lower()].cancelled = cancelled
+        self._trip_instances_by_date[date][trip_id.lower()].cancelled = cancelled
 
-    async def set_stop_time_instance_status(self, trip_id: str, date: datetime.date, stop_sequence: int, skipped: bool) -> None:
+    def set_stop_time_instance_status(self, trip_id: str, date: datetime.date, stop_sequence: int, skipped: bool) -> None:
         """Sets the status of a stop time instance.
 
         Parameters
@@ -199,10 +253,9 @@ class GtfsDataStore:
         skipped : bool
             Whether the stop has or will be skipped.
         """
-        async with self._lock:
-            self._stop_time_instances_by_date[date][trip_id.lower()][stop_sequence].skipped = skipped
+        self._stop_time_instances_by_date[date][trip_id.lower()][stop_sequence].skipped = skipped
 
-    async def set_stop_time_actual_arrival_time(
+    def set_stop_time_actual_arrival_time(
         self, trip_id: str, date: datetime.date, stop_sequence: int, arrival_time: datetime.datetime
     ) -> None:
         """Sets the actual arrival time of a stop time instance.
@@ -218,10 +271,9 @@ class GtfsDataStore:
         arrival_time : datetime.datetime
             The actual arrival time of the stop time instance.
         """
-        async with self._lock:
-            self._stop_time_instances_by_date[date][trip_id.lower()][stop_sequence]._actual_arrival_time = arrival_time
+        self._stop_time_instances_by_date[date][trip_id.lower()][stop_sequence]._actual_arrival_time = arrival_time
 
-    async def set_stop_time_actual_departure_time(
+    def set_stop_time_actual_departure_time(
         self, trip_id: str, date: datetime.date, stop_sequence: int, departure_time: datetime.datetime
     ) -> None:
         """Sets the actual departure time of a stop time instance.
@@ -237,8 +289,7 @@ class GtfsDataStore:
         departure_time : datetime.datetime
             The actual departure time of the stop time instance.
         """
-        async with self._lock:
-            self._stop_time_instances_by_date[date][trip_id.lower()][stop_sequence]._actual_departure_time = departure_time
+        self._stop_time_instances_by_date[date][trip_id.lower()][stop_sequence]._actual_departure_time = departure_time
 
     @overload
     def get_route(self, route_id: str, *, error_on_missing: Literal[True] = ...) -> Route: ...
@@ -292,6 +343,22 @@ class GtfsDataStore:
             raise ValueError(f"Service with ID '{service_id}' not found.")
         return result
 
+    def get_service_exceptions(self, service_id: str) -> Mapping[datetime.date, bool]:
+        """Gets all service exceptions for a service
+
+        Parameters
+        ----------
+        service_id : str
+            The ID of the service to get the exceptions for.
+
+        Returns
+        -------
+        Mapping[datetime.date, bool]
+            The service exceptions for the specified service.
+        """
+
+        return self._services_exceptions[service_id.lower()]
+
     @overload
     def get_trip(self, trip_id: str, *, error_on_missing: Literal[True] = ...) -> Trip: ...
 
@@ -344,6 +411,23 @@ class GtfsDataStore:
             raise ValueError(f"Stop with ID '{stop_id}' not found.")
         return result
 
+    def _walk_child_stop_ids(self, parent_stop_id: str) -> Iterable[str]:
+        """Walks all child stop IDs of a parent stop
+
+        Parameters
+        ----------
+        parent_stop_id : str
+            The ID of the parent stop to walk the children of.
+
+        Returns
+        -------
+        Iterable[str]
+            The IDs of all children stops of the parent stop, including the parent stop.
+        """
+        yield parent_stop_id
+        for stop in self._children_stops[parent_stop_id]:
+            yield from self._walk_child_stop_ids(stop.id)
+
     def stop_has_route_with_type(self, stop_id: str, route_type: RouteType) -> bool:
         """Checks if a stop has a route of a specific type
 
@@ -359,7 +443,7 @@ class GtfsDataStore:
         bool
             Whether the stop has a route of the specified type.
         """
-        return route_type in self._route_types_by_stop.get(stop_id.lower(), set())
+        return route_type in self._route_types_by_stop[stop_id.lower()]
 
     def get_stops_by_route_type(self, route_type: RouteType) -> list[Stop]:
         """Gets all stops for a route type
@@ -374,7 +458,12 @@ class GtfsDataStore:
         list[Stop]
             The stops for the specified route type.
         """
-        return [stop for stop in self._stops.values() if route_type in self._route_types_by_stop[stop.id.lower()]]
+        return [
+            stop
+            for stop in self._stops.values()
+            for stop_id in self._walk_child_stop_ids(stop.id)
+            if self.stop_has_route_with_type(stop_id, route_type)
+        ]
 
     def get_trips_by_route(self, route_id: str) -> Sequence[Trip]:
         """Gets all trips for a route
@@ -389,7 +478,7 @@ class GtfsDataStore:
         Sequence[Trip]
             The trips for the specified route.
         """
-        return self._trips_by_route.get(route_id.lower(), [])
+        return self._trips_by_route[route_id.lower()]
 
     def get_trips_by_service(self, service_id: str) -> Sequence[Trip]:
         """Gets all trips for a service
@@ -404,7 +493,7 @@ class GtfsDataStore:
         Sequence[Trip]
             The trips for the specified service.
         """
-        return self._trips_by_service.get(service_id.lower(), [])
+        return self._trips_by_service[service_id.lower()]
 
     @overload
     def get_trip_instance(self, trip_id: str, date: datetime.date, *, error_on_missing: Literal[True] = ...) -> TripInstance: ...
@@ -447,7 +536,7 @@ class GtfsDataStore:
         Sequence[StopTime]
             The stop times for the specified trip.
         """
-        return self._stop_times_by_trip.get(trip_id.lower(), [])
+        return self._stop_times_by_trip[trip_id.lower()]
 
     def get_stop_time_instances(self, trip_id: str, date: datetime.date) -> Sequence[StopTimeInstance]:
         """Gets all stop time instances for a trip on a date
@@ -491,7 +580,8 @@ class GtfsDataStore:
         return sorted(
             (
                 stop_time_instance
-                for stop_time_instance in self._stop_time_instances_by_stop.get(stop_id.lower(), [])
+                for stop_id in self._walk_child_stop_ids(stop_id.lower())
+                for stop_time_instance in self._stop_time_instances_by_stop[stop_id.lower()]
                 if start_time <= stop_time_instance.actual_departure_time < end_time
             ),
             key=lambda x: x.actual_departure_time,

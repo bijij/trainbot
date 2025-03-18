@@ -1,10 +1,10 @@
 import datetime
 from collections.abc import Mapping, Sequence
-from enum import Flag
+from enum import Enum, Flag, auto
 from random import choice
-from typing import Literal, overload
+from typing import Literal, Self, overload
 
-from ...gtfs.types import Colour, Direction, RouteType, Stop, StopTimeInstance
+from ...gtfs.types import Direction, Route, RouteType, Stop, StopTimeInstance
 
 ANSI_ESCAPE = "\033[0;"
 ANSI_RESET = f"{ANSI_ESCAPE}0m"
@@ -12,15 +12,134 @@ ZWSP = "\u200b"
 
 ANSI_FORMATING = {...}
 
+
+class DiscordAnsiColour(Enum):
+    """Represents the colours that can be used in Discord messages."""
+
+    GREY = auto()
+    RED = auto()
+    YELLOW = auto()
+    GREEN = auto()
+    CYAN = auto()
+    BLUE = auto()
+    MAGENTA = auto()
+    WHITE = auto()
+
+    @classmethod
+    def from_colour(cls, colour: str) -> Self:
+        """Returns the colour code for the colour.
+
+        Parameters
+        ----------
+        colour : str
+            The colour to get the code for.
+
+        Returns
+        -------
+        DiscordAnsiColour
+            The colour code for the colour.
+        """
+        r, g, b = int(colour[:2], 16), int(colour[2:4], 16), int(colour[4:], 16)
+
+        # Find the closest colour
+        closest = cls.GREY
+        closest_distance = float("inf")
+        for discord_colour, rgb in COLOUR_MAP.items():
+            distance = sum((a - b) ** 2 for a, b in zip(rgb, (r, g, b)))
+            if distance < closest_distance:
+                closest = discord_colour
+                closest_distance = distance
+
+        return closest  # type: ignore
+
+    @classmethod
+    def from_route(cls, route: Route) -> Self:
+        """Returns the colour code for the route.
+
+        Parameters
+        ----------
+        route : Route
+            The route to get the colour for.
+
+        Returns
+        -------
+        DiscordAnsiColour
+            The colour code for the route.
+        """
+        if route.type is RouteType.RAIL:
+            short_name = route.short_name[-2:]
+        else:
+            short_name = route.short_name
+
+        return ROUTE_COLOURS.get(route.type, {}).get(short_name, cls.from_colour(route.colour))  # type: ignore
+
+    @property
+    def code(self) -> str:
+        """Returns the ANSI code for the colour."""
+        return COLOUR_CODES[self]
+
+
+COLOUR_MAP = {
+    DiscordAnsiColour.GREY: (0x40, 0x40, 0x40),
+    DiscordAnsiColour.RED: (0xFF, 0x00, 0x00),
+    DiscordAnsiColour.YELLOW: (0xFF, 0xFF, 0x00),
+    DiscordAnsiColour.GREEN: (0x00, 0xFF, 0x00),
+    DiscordAnsiColour.CYAN: (0x00, 0xFF, 0xFF),
+    DiscordAnsiColour.BLUE: (0x00, 0x00, 0xFF),
+    DiscordAnsiColour.MAGENTA: (0xFF, 0x00, 0xFF),
+    DiscordAnsiColour.WHITE: (0xFF, 0xFF, 0xFF),
+}
+
+
+ROUTE_COLOURS = {
+    RouteType.RAIL: {
+        "GY": DiscordAnsiColour.GREEN,
+        "NA": DiscordAnsiColour.GREEN,
+        "CA": DiscordAnsiColour.GREEN,
+        "RP": DiscordAnsiColour.CYAN,
+        "SH": DiscordAnsiColour.BLUE,
+        "BD": DiscordAnsiColour.YELLOW,
+        "DB": DiscordAnsiColour.MAGENTA,
+        "FG": DiscordAnsiColour.RED,
+        "BR": DiscordAnsiColour.GREY,
+        "CL": DiscordAnsiColour.BLUE,
+        "BN": DiscordAnsiColour.RED,
+        "VL": DiscordAnsiColour.YELLOW,
+        "SP": DiscordAnsiColour.CYAN,
+        "IP": DiscordAnsiColour.GREEN,
+        "RW": DiscordAnsiColour.GREEN,
+    },
+    RouteType.BUS: {
+        "M1": DiscordAnsiColour.BLUE,
+        "M2": DiscordAnsiColour.BLUE,
+        "30": DiscordAnsiColour.YELLOW,
+        "40": DiscordAnsiColour.RED,
+        "50": DiscordAnsiColour.RED,
+        "60": DiscordAnsiColour.BLUE,
+        "61": DiscordAnsiColour.RED,
+        "66": DiscordAnsiColour.BLUE,
+    },
+    RouteType.FERRY: {
+        "F1": DiscordAnsiColour.BLUE,
+        "F11": DiscordAnsiColour.GREEN,
+        "F12": DiscordAnsiColour.MAGENTA,
+        "F21": DiscordAnsiColour.CYAN,
+        "F22": DiscordAnsiColour.YELLOW,
+        "F23": DiscordAnsiColour.RED,
+        "F24": DiscordAnsiColour.GREEN,
+    },
+}
+
+
 COLOUR_CODES = {
-    Colour.RED: "31",
-    Colour.GREEN: "32",
-    Colour.GOLD: "33",
-    Colour.BLUE: "34",
-    Colour.PURPLE: "35",
-    Colour.CYAN: "36",
-    Colour.WHITE: "37",
-    Colour.GREY: "30",
+    DiscordAnsiColour.GREY: "30",
+    DiscordAnsiColour.RED: "31",
+    DiscordAnsiColour.GREEN: "32",
+    DiscordAnsiColour.YELLOW: "33",
+    DiscordAnsiColour.BLUE: "34",
+    DiscordAnsiColour.MAGENTA: "35",
+    DiscordAnsiColour.CYAN: "36",
+    DiscordAnsiColour.WHITE: "37",
 }
 
 
@@ -28,7 +147,7 @@ SCREEN_WIDTH = 48
 MAX_NEXT_TRAINS = 6
 
 
-def _with_formatting(text: str, colour: Colour | None = None, bold: bool = False, underline: bool = False) -> str:
+def _with_formatting(text: str, colour: DiscordAnsiColour | None = None, bold: bool = False, underline: bool = False) -> str:
     """Formats text with ANSI escape codes.
 
     Parameters
@@ -51,7 +170,7 @@ def _with_formatting(text: str, colour: Colour | None = None, bold: bool = False
     codes = []
 
     if colour is not None:
-        codes.append(COLOUR_CODES[colour])
+        codes.append(colour.code)
 
     if bold:
         codes.append("1")
@@ -377,7 +496,7 @@ def _render_train_bar(now: datetime.datetime, service: StopTimeInstance) -> str:
     return (
         _with_formatting(
             f"{scheduled_time:<7}{destination:<{SCREEN_WIDTH - 20}}{service.stop.platform_code:<7}{departs:>6}",
-            service.trip.route.colour,
+            DiscordAnsiColour.from_route(service.trip.route),
         )
         + "\n"
     )
@@ -417,7 +536,8 @@ def _render_no_trains_text(direction: str, lookahead_hours: int, slim: bool = Fa
         text = NO_TRAINS_TEXT
 
     return "\n".join(
-        _with_formatting(f"{line.format(direction=direction, lookahead=lookahead_hours):^{SCREEN_WIDTH}}", Colour.WHITE) for line in text
+        _with_formatting(f"{line.format(direction=direction, lookahead=lookahead_hours):^{SCREEN_WIDTH}}", DiscordAnsiColour.WHITE)
+        for line in text
     )
 
 
@@ -464,8 +584,8 @@ def _render_train_timetable(
 
     if direction is not None:
         text = (
-            _with_formatting(f"[{now.strftime("%I:%M:%S")}]", Colour.GOLD, bold=True)
-            + _with_formatting(f"{f"Next Trains {_get_header_text(stop.id)[direction]}":^{SCREEN_WIDTH - 10}}", Colour.WHITE)
+            _with_formatting(f"[{now.strftime("%I:%M:%S")}]", DiscordAnsiColour.YELLOW, bold=True)
+            + _with_formatting(f"{f"Next Trains {_get_header_text(stop.id)[direction]}":^{SCREEN_WIDTH - 10}}", DiscordAnsiColour.WHITE)
             + "\n"
         )
 
@@ -481,14 +601,14 @@ def _render_train_timetable(
     else:
         if LINES[stop.id.lower()] is _Line.INNER_CITY:
             text = (
-                _with_formatting(f"[{now.strftime("%I:%M:%S")}]", Colour.GOLD, bold=True)
-                + _with_formatting(f"{f"Next 3 Trains North and South/West":^{SCREEN_WIDTH - 10}}", Colour.WHITE)
+                _with_formatting(f"[{now.strftime("%I:%M:%S")}]", DiscordAnsiColour.YELLOW, bold=True)
+                + _with_formatting(f"{f"Next 3 Trains North and South/West":^{SCREEN_WIDTH - 10}}", DiscordAnsiColour.WHITE)
                 + "\n"
             )
         else:
             text = (
-                _with_formatting(f"[{now.strftime("%I:%M:%S")}]", Colour.GOLD, bold=True)
-                + _with_formatting(f"{f"Next 3 Inbound and Outbound Trains":^{SCREEN_WIDTH - 10}}", Colour.WHITE)
+                _with_formatting(f"[{now.strftime("%I:%M:%S")}]", DiscordAnsiColour.YELLOW, bold=True)
+                + _with_formatting(f"{f"Next 3 Inbound and Outbound Trains":^{SCREEN_WIDTH - 10}}", DiscordAnsiColour.WHITE)
                 + "\n"
             )
 
@@ -547,7 +667,7 @@ def _render_bus_timetable(
     str
         The rendered timetable.
     """
-    text = _with_formatting("Route  Destination                       Departs", Colour.WHITE, bold=True) + "\n"
+    text = _with_formatting("Route  Destination                       Departs", DiscordAnsiColour.WHITE, bold=True) + "\n"
     for service in services:
         departs_minutes = (service.actual_departure_time - now).seconds // 60
         if departs_minutes < 60:
@@ -557,13 +677,13 @@ def _render_bus_timetable(
         text += (
             _with_formatting(
                 f"{service.trip.route.short_name:<7}{service.trip.headsign:<{SCREEN_WIDTH-13}}{departs:>6}",
-                service.trip.route.colour,
+                DiscordAnsiColour.from_route(service.trip.route),
             )
             + "\n"
         )
 
     if not services:
-        text += _with_formatting(NO_SERVICES_TEXT.format(lookahead_hours), Colour.WHITE)
+        text += _with_formatting(NO_SERVICES_TEXT.format(lookahead_hours), DiscordAnsiColour.WHITE)
 
     return text
 
@@ -609,11 +729,13 @@ def _render_tram_timetable(now: datetime.datetime, stop_times: Sequence[StopTime
             else:
                 departs = stop_time.actual_departure_time.strftime("%H:%M")
 
-            text += _with_formatting(f"Plat{stop_time.stop.platform_code:<3}{destination:<{SCREEN_WIDTH-14}}{departs:>6}\n", Colour.GOLD)
+            text += _with_formatting(
+                f"Plat{stop_time.stop.platform_code:<3}{destination:<{SCREEN_WIDTH-14}}{departs:>6}\n", DiscordAnsiColour.YELLOW
+            )
         else:
             text += f"{ZWSP}\n"
 
-    text += _with_formatting(f"{now.strftime("%I:%M:%S %p").lower():^{SCREEN_WIDTH}}\n", Colour.WHITE, bold=True)
+    text += _with_formatting(f"{now.strftime("%I:%M:%S %p").lower():^{SCREEN_WIDTH}}\n", DiscordAnsiColour.WHITE, bold=True)
     text += choice(TRAM_FOOTERS)
 
     return text

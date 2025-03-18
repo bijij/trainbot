@@ -60,7 +60,7 @@ class RealtimeGtfsHandler(Service):
 
         # Update the cancellation status of the trip instance
         cancelled = trip_update.trip.schedule_relationship == CANCELLED_TRIP_SCHEDULE_RELATIONSHIP
-        await self._data_store.set_trip_instance_status(trip_update.trip.trip_id, start_date, cancelled)
+        self._data_store.set_trip_instance_status(trip_update.trip.trip_id, start_date, cancelled)
 
         # Update the actual arrival and departure times of the stop times
         for stop_time_update in trip_update.stop_time_update:
@@ -70,19 +70,17 @@ class RealtimeGtfsHandler(Service):
                 continue
 
             skipped = stop_time_update.schedule_relationship == SKIPPED_STOP_SCHEDULE_RELATIONSHIP
-            await self._data_store.set_stop_time_instance_status(
-                trip_update.trip.trip_id, start_date, stop_time_update.stop_sequence, skipped
-            )
+            self._data_store.set_stop_time_instance_status(trip_update.trip.trip_id, start_date, stop_time_update.stop_sequence, skipped)
 
             if stop_time_update.arrival is not None and stop_time_update.arrival.time is not None:
                 arrival_time = datetime.datetime.fromtimestamp(stop_time_update.arrival.time, datetime.timezone.utc).astimezone(BRISBANE)
-                await self._data_store.set_stop_time_actual_arrival_time(
+                self._data_store.set_stop_time_actual_arrival_time(
                     trip_update.trip.trip_id, start_date, stop_time_update.stop_sequence, arrival_time
                 )
 
             if stop_time_update.departure is not None and stop_time_update.departure.time is not None:
                 departure_time = datetime.datetime.fromtimestamp(stop_time_update.departure.time, datetime.timezone.utc).astimezone(BRISBANE)
-                await self._data_store.set_stop_time_actual_departure_time(
+                self._data_store.set_stop_time_actual_departure_time(
                     trip_update.trip.trip_id, start_date, stop_time_update.stop_sequence, departure_time
                 )
 

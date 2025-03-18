@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import datetime
 from collections.abc import Iterable, Mapping, Sequence
-from enum import Enum, auto
-from typing import TYPE_CHECKING, Self
+from enum import Enum
+from typing import TYPE_CHECKING, Self, TypedDict
 
 if TYPE_CHECKING:
     from .store import GtfsDataStore
@@ -11,71 +11,23 @@ if TYPE_CHECKING:
 # region: GTFS static data types
 
 __all__ = (
-    "Colour",
+    "CalendarData",
+    "CalendarDateData",
     "Direction",
     "LocationType",
     "Route",
+    "RouteData",
     "RouteType",
     "Service",
     "Stop",
+    "StopData",
     "StopTime",
+    "StopTimeData",
     "Trip",
+    "TripData",
     "TripInstance",
     "StopTimeInstance",
 )
-
-
-class Colour(Enum):
-    """Represents a colour."""
-
-    RED = auto()
-    BLUE = auto()
-    GREEN = auto()
-    GOLD = auto()
-    PURPLE = auto()
-    CYAN = auto()
-    GREY = auto()
-    WHITE = auto()
-
-
-RAIL_COLOUR_MAP = {
-    "GY": Colour.GREEN,
-    "NA": Colour.GREEN,
-    "CA": Colour.GREEN,
-    "RP": Colour.CYAN,
-    "SH": Colour.BLUE,
-    "BD": Colour.GOLD,
-    "DB": Colour.PURPLE,
-    "FG": Colour.RED,
-    "BR": Colour.GREY,
-    "CL": Colour.BLUE,
-    "BN": Colour.RED,
-    "VL": Colour.GOLD,
-    "SP": Colour.CYAN,
-    "IP": Colour.GREEN,
-    "RW": Colour.GREEN,
-}
-
-BUS_COLOUR_MAP = {
-    "M1": Colour.BLUE,
-    "M2": Colour.BLUE,
-    "30": Colour.GOLD,
-    "40": Colour.RED,
-    "50": Colour.RED,
-    "60": Colour.BLUE,
-    "61": Colour.RED,
-}
-
-
-FERRY_COLOUR_MAP = {
-    "F1": Colour.BLUE,
-    "F11": Colour.GREEN,
-    "F12": Colour.PURPLE,
-    "F21": Colour.CYAN,
-    "F22": Colour.GOLD,
-    "F23": Colour.RED,
-    "F24": Colour.GREEN,
-}
 
 
 class RouteType(Enum):
@@ -123,6 +75,17 @@ class _GtfsData:
 
         return self
 
+    def __repr__(self) -> str:
+        return f"<{self.__class__.__name__} {self.__dict__}>"
+
+
+class RouteData(TypedDict):
+    route_id: str
+    route_short_name: str
+    route_long_name: str
+    route_type: str
+    route_color: str
+
 
 class Route(_GtfsData):
     """Represents a route.
@@ -147,6 +110,7 @@ class Route(_GtfsData):
         short_name: str,
         long_name: str,
         type: RouteType,
+        colour: str,
     ) -> None:
         """Initializes the route.
 
@@ -162,24 +126,14 @@ class Route(_GtfsData):
             The long name of the route.
         type : RouteType
             The type of the route.
+        color: str
+            The color of the route, as a hex string.
         """
         self.id: str = id
         self.short_name: str = short_name
         self.long_name: str = long_name
         self.type: RouteType = type
-
-    @property
-    def colour(self) -> Colour:
-        """Colour: The colour of the route."""
-        match self.type:
-            case RouteType.TRAM:
-                return Colour.GOLD
-            case RouteType.RAIL:
-                return RAIL_COLOUR_MAP.get(self.short_name[2:], Colour.GREY)
-            case RouteType.BUS:
-                return BUS_COLOUR_MAP.get(self.short_name, Colour.PURPLE)
-            case RouteType.FERRY:
-                return FERRY_COLOUR_MAP.get(self.short_name, Colour.CYAN)
+        self.colour: str = colour
 
     @property
     def trips(self) -> Sequence[Trip]:
@@ -188,6 +142,25 @@ class Route(_GtfsData):
             raise RuntimeError("This route is not registered with a GTFS data store.")
 
         return self._data_store.get_trips_by_route(self.id)
+
+
+class CalendarDateData(TypedDict):
+    service_id: str
+    date: str
+    exception_type: str
+
+
+class CalendarData(TypedDict):
+    service_id: str
+    monday: str
+    tuesday: str
+    wednesday: str
+    thursday: str
+    friday: str
+    saturday: str
+    sunday: str
+    start_date: str
+    end_date: str
 
 
 class Service(_GtfsData):
@@ -203,8 +176,6 @@ class Service(_GtfsData):
         The start date of the service.
     end_date : datetime.date
         The end date of the service.
-    exceptions : dict[datetime.date, bool]
-        The exceptions to the service.
     """
 
     def __init__(
@@ -215,13 +186,11 @@ class Service(_GtfsData):
         days: Iterable[int],
         start_date: datetime.date,
         end_date: datetime.date,
-        exceptions: Mapping[datetime.date, bool],
     ) -> None:
         self.id: str = id
         self.days: set[int] = set(days)
         self.start_date: datetime.date = start_date
         self.end_date: datetime.date = end_date
-        self.exceptions: dict[datetime.date, bool] = dict(exceptions)
 
     def runs_on(self, date: datetime.date) -> bool:
         """Returns whether the service runs on the given date
@@ -242,12 +211,28 @@ class Service(_GtfsData):
         return self.start_date <= date <= self.end_date and date.weekday() in self.days
 
     @property
+    def exceptions(self) -> Mapping[datetime.date, bool]:
+        """Mapping[datetime.date, bool]: The service exceptions."""
+        if self._data_store is None:
+            raise RuntimeError("This service is not registered with a GTFS data store.")
+
+        return self._data_store.get_service_exceptions(self.id)
+
+    @property
     def trips(self) -> Sequence[Trip]:
         """Sequence[Trip]: The trips on this service."""
         if self._data_store is None:
             raise RuntimeError("This service is not registered with a GTFS data store.")
 
         return self._data_store.get_trips_by_service(self.id)
+
+
+class TripData(TypedDict):
+    trip_id: str
+    route_id: str
+    service_id: str
+    trip_headsign: str
+    direction_id: str
 
 
 class Trip(_GtfsData):
@@ -323,6 +308,15 @@ class Trip(_GtfsData):
         return self._data_store.get_stop_times(self.id)
 
 
+class StopData(TypedDict):
+    stop_id: str
+    stop_name: str
+    stop_url: str
+    location_type: str
+    parent_station: str
+    platform_code: str
+
+
 class Stop(_GtfsData):
     """Represents a stop.
 
@@ -336,8 +330,6 @@ class Stop(_GtfsData):
         The URL of the stop.
     type : LocationType
         The type of the stop.
-    parent_stop_id : str | None
-        The parent stop ID.
     platform_code : str | None
         The platform code.
     """
@@ -350,7 +342,7 @@ class Stop(_GtfsData):
         name: str,
         url: str,
         type: LocationType,
-        parent_stop_id: str | None,
+        parent_station_id: str | None,
         platform_code: str | None,
     ) -> None:
         """Initializes the stop.
@@ -365,7 +357,7 @@ class Stop(_GtfsData):
             The URL of the stop.
         type : LocationType
             The type of the stop.
-        parent_stop_id : str | None
+        parent_station_id : str | None
             The parent stop ID.
         platform_code : str | None
             The platform code.
@@ -374,18 +366,27 @@ class Stop(_GtfsData):
         self.name: str = name
         self.url: str = url
         self.type: LocationType = type
-        self.parent_stop_id: str | None = parent_stop_id
+        self._parent_station_id: str | None = parent_station_id
         self.platform_code: str | None = platform_code
 
     @property
-    def parent_stop(self) -> Stop | None:
-        """Stop | None: The parent stop of the stop."""
+    def parent_station(self) -> Stop | None:
+        """Stop | None: The parent station of the stop."""
         if self._data_store is None:
             raise RuntimeError("This stop is not registered with a GTFS data store.")
 
-        if self.parent_stop_id is not None:
-            return self._data_store.get_stop(self.parent_stop_id)
+        if self._parent_station_id is not None:
+            return self._data_store.get_stop(self._parent_station_id)
         return None
+
+
+class StopTimeData(TypedDict):
+    trip_id: str
+    stop_sequence: str
+    stop_id: str
+    arrival_time: str
+    departure_time: str
+    pickup_type: str
 
 
 class StopTime(_GtfsData):
