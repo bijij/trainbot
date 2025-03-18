@@ -480,6 +480,19 @@ INNER_CITY_STATIONS = {
 }
 
 
+STATION_RENAMES = {
+    "place_intsta": "Airport",
+    "place_kprsta": "Redcliffe",
+    "place_varsta": "Gold Coast",
+}
+
+
+DESTINATION_PREPEND_STATIONS = {
+    "place_namsta": "place_cabstn",
+    "place_rossta": "place_ipssta",
+}
+
+
 NO_TRAINS_TEXT = [
     ZWSP,
     "THERE ARE NO {direction} TRAINS",
@@ -490,13 +503,34 @@ NO_TRAINS_TEXT = [
 ]
 
 
-DESTINATION_PREPEND_TEXT = {
-    "place_namsta": "Caboolture/",
-    "place_rossta": "Ipswich/",
-}
-
-
 NO_TRAINS_SLIM_TEXT = ["THERE ARE NO {direction} TRAINS DEPARTING", "FROM THIS STATION IN THE NEXT {lookahead} HOURS", ZWSP]
+
+
+def _get_station_name(stop: Stop) -> str:
+    while stop.parent_station is not None:
+        stop = stop.parent_station
+
+    if stop.id in STATION_RENAMES:
+        return STATION_RENAMES[stop.id]
+
+    return stop.name.split(" station", 1)[0]
+
+
+def _is_city_service(service: StopTimeInstance) -> bool:
+    stop = service.stop
+    while stop.parent_station is not None:
+        stop = stop.parent_station
+
+    if LINES[stop.id] is not _Line.INNER_CITY:
+        for stop_time_instance in service.trip.stop_times:
+            if stop_time_instance.sequence > service.sequence:
+                stop = stop_time_instance.stop
+                while stop.parent_station is not None:
+                    stop = stop.parent_station
+                if LINES[stop.id] is _Line.INNER_CITY:
+                    return True
+
+    return False
 
 
 def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInstance) -> str:
@@ -519,22 +553,21 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
     scheduled_time = service.scheduled_departure_time.strftime("%I:%M")
 
     last_stop = service.trip.destination
-    while last_stop.parent_station is not None:
-        last_stop = last_stop.parent_station
-    destination = last_stop.name.split(" station", 1)[0]
+    destination = _get_station_name(last_stop)
 
-    if last_stop.id in DESTINATION_PREPEND_TEXT:
-        destination = DESTINATION_PREPEND_TEXT[last_stop.id] + destination
-
-    if LINES[stop.id.lower()] is not _Line.INNER_CITY:
+    if last_stop.id in DESTINATION_PREPEND_STATIONS:
+        prepend_station = DESTINATION_PREPEND_STATIONS[last_stop.id]
         for stop_time_instance in service.trip.stop_times:
             if stop_time_instance.sequence > service.sequence:
                 stop = stop_time_instance.stop
                 while stop.parent_station is not None:
                     stop = stop.parent_station
-                if LINES[stop.id.lower()] is _Line.INNER_CITY:
-                    destination = "City & " + destination
-                    break
+
+                if stop.id == prepend_station:
+                    destination = f"{_get_station_name(stop)} / " + destination
+
+    if _is_city_service(service):
+        destination = "City & " + destination
 
     departs_minutes = (service.actual_departure_time - now).seconds // 60
     if departs_minutes < 60:
