@@ -474,11 +474,13 @@ DESTINATION_PREPEND_TEXT = {
 NO_TRAINS_SLIM_TEXT = ["THERE ARE NO {direction} TRAINS DEPARTING", "FROM THIS STATION IN THE NEXT {lookahead} HOURS", ZWSP]
 
 
-def _render_train_bar(now: datetime.datetime, service: StopTimeInstance) -> str:
+def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInstance) -> str:
     """Renders a train bar.
 
     Parameters
     ----------
+    stop: Stop
+        The stop to render the bar for.
     now : datetime.datetime
         The current time.
     service : StopTimeInstance
@@ -491,13 +493,15 @@ def _render_train_bar(now: datetime.datetime, service: StopTimeInstance) -> str:
     """
     scheduled_time = service.scheduled_departure_time.strftime("%H:%M")
 
-    last_stop = service.trip.stop_times[-1]
-    destination = last_stop.stop.name.split(" station,", 1)[0]
+    last_stop = service.trip.stop_times[-1].stop
+    while last_stop.parent_station is not None:
+        last_stop = last_stop.parent_station
+    destination = last_stop.name.split(" station,", 1)[0]
 
-    if last_stop.stop.id in DESTINATION_PREPEND_TEXT:
-        destination = DESTINATION_PREPEND_TEXT[last_stop.stop.id] + destination
+    if last_stop.id in DESTINATION_PREPEND_TEXT:
+        destination = DESTINATION_PREPEND_TEXT[last_stop.id] + destination
 
-    if LINES[service.stop.id.lower()] is _Line.INNER_CITY:
+    if LINES[stop.id.lower()] is _Line.INNER_CITY:
         destination = "City & " + destination
 
     departs_minutes = (service.actual_departure_time - now).seconds // 60
@@ -515,11 +519,11 @@ def _render_train_bar(now: datetime.datetime, service: StopTimeInstance) -> str:
     )
 
 
-def _render_train_bars(now: datetime.datetime, services: Sequence[StopTimeInstance], max_bars: int) -> str:
+def _render_train_bars(stop: Stop, now: datetime.datetime, services: Sequence[StopTimeInstance], max_bars: int) -> str:
     text = ""
 
     for service in services[:max_bars]:
-        text += _render_train_bar(now, service)
+        text += _render_train_bar(stop, now, service)
     for _ in range(max_bars - len(services)):
         text += ZWSP + "\n"
 
@@ -606,7 +610,7 @@ def _render_train_timetable(
 
         if services:
             text += "Service                        Platform  Departs\n"
-            text += _render_train_bars(now, services, MAX_NEXT_TRAINS)
+            text += _render_train_bars(stop, now, services, MAX_NEXT_TRAINS)
 
         else:
             text += _render_no_trains_text(up_text if direction is Direction.UPWARD else down_text, lookahead_hours) + "\n"
@@ -628,7 +632,7 @@ def _render_train_timetable(
         text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[inbound_direction]:<{SCREEN_WIDTH - 29}}"}Platform  Departs\n"
         inbound_services = upward_services if inbound_direction is Direction.UPWARD else downward_services
         if inbound_services:
-            text += _render_train_bars(now, inbound_services, MAX_NEXT_TRAINS // 2)
+            text += _render_train_bars(stop, now, inbound_services, MAX_NEXT_TRAINS // 2)
         else:
             text += (
                 _render_no_trains_text(up_text if inbound_direction is Direction.UPWARD else down_text, lookahead_hours, slim=True) + "\n"
@@ -637,7 +641,7 @@ def _render_train_timetable(
         text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[outbound_direction]:<{SCREEN_WIDTH - 29}}"}Platform  Departs\n"
         outbound_services = upward_services if outbound_direction is Direction.UPWARD else downward_services
         if outbound_services:
-            text += _render_train_bars(now, outbound_services, MAX_NEXT_TRAINS // 2)
+            text += _render_train_bars(stop, now, outbound_services, MAX_NEXT_TRAINS // 2)
         else:
             text += (
                 _render_no_trains_text(up_text if outbound_direction is Direction.UPWARD else down_text, lookahead_hours, slim=True) + "\n"
