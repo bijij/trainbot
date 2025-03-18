@@ -496,7 +496,7 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
     last_stop = service.trip.stop_times[-1].stop
     while last_stop.parent_station is not None:
         last_stop = last_stop.parent_station
-    destination = last_stop.name.split(" station,", 1)[0]
+    destination = last_stop.name.split(" station", 1)[0]
 
     if last_stop.id in DESTINATION_PREPEND_TEXT:
         destination = DESTINATION_PREPEND_TEXT[last_stop.id] + destination
