@@ -553,6 +553,8 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
     scheduled_time = service.scheduled_departure_time.strftime("%I:%M")
 
     last_stop = service.trip.destination
+    while last_stop.parent_station is not None:
+        last_stop = last_stop.parent_station
     destination = _get_station_name(last_stop)
 
     if last_stop.id in DESTINATION_PREPEND_STATIONS:
