@@ -501,8 +501,12 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
     if last_stop.id in DESTINATION_PREPEND_TEXT:
         destination = DESTINATION_PREPEND_TEXT[last_stop.id] + destination
 
-    if LINES[stop.id.lower()] is _Line.INNER_CITY:
-        destination = "City & " + destination
+    if LINES[stop.id.lower()] is not _Line.INNER_CITY:
+        for stop_time_instance in service.trip.stop_times:
+            if stop_time_instance.sequence > service.sequence:
+                if LINES[stop_time_instance.stop.id.lower()] is _Line.INNER_CITY:
+                    destination = "City & " + destination
+                    break
 
     departs_minutes = (service.actual_departure_time - now).seconds // 60
     if departs_minutes < 60:
