@@ -479,6 +479,14 @@ class TripInstance(Trip):
 
         return self._data_store.get_stop_time_instances(self.id, self.date)
 
+    @property
+    def destination(self) -> Stop:
+        """Stop: The destination of the trip instance."""
+        if self._data_store is None:
+            raise RuntimeError("This trip instance is not registered with a GTFS data store.")
+
+        return self.stop_times[-1].stop
+
 
 class StopTimeInstance(StopTime):
     """Represents a stop time instance.

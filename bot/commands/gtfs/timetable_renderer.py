@@ -53,25 +53,33 @@ class DiscordAnsiColour(Enum):
         return closest  # type: ignore
 
     @classmethod
-    def from_route(cls, route: Route) -> Self:
-        """Returns the colour code for the route.
+    def from_service(cls, service: StopTimeInstance) -> Self:
+        """Returns the colour code for a given service.
 
         Parameters
         ----------
-        route : Route
-            The route to get the colour for.
+        service : StopTimeInstance
+            The service to get the colour for.
 
         Returns
         -------
         DiscordAnsiColour
-            The colour code for the route.
+            The colour code for the service.
         """
-        if route.type is RouteType.RAIL:
-            short_name = route.short_name[-2:]
-        else:
-            short_name = route.short_name
+        if service.trip.route.type is RouteType.RAIL:
 
-        return ROUTE_COLOURS.get(route.type, {}).get(short_name, cls.from_colour(route.colour))  # type: ignore
+            destination = service.trip.destination
+            while destination.parent_station is not None:
+                destination = destination.parent_station
+
+            if destination.id.lower() in INNER_CITY_STATIONS:
+                return DiscordAnsiColour.GREY  # type: ignore
+
+            short_name = service.trip.route.short_name[-2:]
+        else:
+            short_name = service.trip.route.short_name
+
+        return ROUTE_COLOURS.get(service.trip.route.type, {}).get(short_name, cls.from_colour(service.trip.route.colour))  # type: ignore
 
     @property
     def code(self) -> str:
@@ -455,6 +463,23 @@ LINES = {
 }
 
 
+INNER_CITY_STATIONS = {
+    "place_norsta",
+    "place_nunsta",
+    "place_tomsta",
+    "place_egjsta",
+    "place_wolsta",
+    "place_albsta",
+    "place_bowsta",
+    "place_forsta",
+    "place_censta",
+    "place_romsta",
+    "place_sousta",
+    "place_sbasta",
+    "place_parsta",
+}
+
+
 NO_TRAINS_TEXT = [
     ZWSP,
     "THERE ARE NO {direction} TRAINS",
@@ -493,7 +518,7 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
     """
     scheduled_time = service.scheduled_departure_time.strftime("%I:%M")
 
-    last_stop = service.trip.stop_times[-1].stop
+    last_stop = service.trip.destination
     while last_stop.parent_station is not None:
         last_stop = last_stop.parent_station
     destination = last_stop.name.split(" station", 1)[0]
@@ -520,7 +545,7 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
     return (
         _with_formatting(
             f"{scheduled_time:<7}{destination:<{SCREEN_WIDTH - 20}}{service.stop.platform_code:<7}{departs:>6}",
-            DiscordAnsiColour.from_route(service.trip.route),
+            DiscordAnsiColour.from_service(service),
         )
         + "\n"
     )
@@ -701,7 +726,7 @@ def _render_bus_timetable(
         text += (
             _with_formatting(
                 f"{service.trip.route.short_name:<7}{service.trip.headsign:<{SCREEN_WIDTH-13}}{departs:>6}",
-                DiscordAnsiColour.from_route(service.trip.route),
+                DiscordAnsiColour.from_service(service),
             )
             + "\n"
         )
