@@ -491,7 +491,7 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
     str
         The rendered bar.
     """
-    scheduled_time = service.scheduled_departure_time.strftime("%H:%M")
+    scheduled_time = service.scheduled_departure_time.strftime("%I:%M")
 
     last_stop = service.trip.stop_times[-1].stop
     while last_stop.parent_station is not None:
@@ -515,7 +515,7 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
     if departs_minutes < 60:
         departs = f"{departs_minutes} min"
     else:
-        departs = service.actual_departure_time.strftime("%H:%M")
+        departs = service.actual_departure_time.strftime("%I:%M")
 
     return (
         _with_formatting(
