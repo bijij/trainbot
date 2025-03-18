@@ -137,7 +137,7 @@ class GtfsDataStore:
             route_id=data["route_id"].lower(),
             service_id=data["service_id"].lower(),
             headsign=data["trip_headsign"],
-            direction=Direction.UPWARD if data["direction_id"] == "1" else Direction.DOWNWARD,
+            direction=Direction.DOWNWARD if data["direction_id"] == "1" else Direction.UPWARD,
         )
 
         self._trips[trip.id] = trip.register(self)

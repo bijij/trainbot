@@ -465,6 +465,12 @@ NO_TRAINS_TEXT = [
 ]
 
 
+DESTINATION_PREPEND_TEXT = {
+    "place_namsta": "Caboolture/",
+    "place_rossta": "Ipswich/",
+}
+
+
 NO_TRAINS_SLIM_TEXT = ["THERE ARE NO {direction} TRAINS DEPARTING", "FROM THIS STATION IN THE NEXT {lookahead} HOURS", ZWSP]
 
 
@@ -485,7 +491,14 @@ def _render_train_bar(now: datetime.datetime, service: StopTimeInstance) -> str:
     """
     scheduled_time = service.scheduled_departure_time.strftime("%H:%M")
 
-    destination = service.trip.stop_times[-1].stop.name.split(" station,", 1)[0]
+    last_stop = service.trip.stop_times[-1]
+    destination = last_stop.stop.name.split(" station,", 1)[0]
+
+    if last_stop.stop.id in DESTINATION_PREPEND_TEXT:
+        destination = DESTINATION_PREPEND_TEXT[last_stop.stop.id] + destination
+
+    if LINES[service.stop.id.lower()] is _Line.INNER_CITY:
+        destination = "City & " + destination
 
     departs_minutes = (service.actual_departure_time - now).seconds // 60
     if departs_minutes < 60:
