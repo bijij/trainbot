@@ -504,7 +504,10 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
     if LINES[stop.id.lower()] is not _Line.INNER_CITY:
         for stop_time_instance in service.trip.stop_times:
             if stop_time_instance.sequence > service.sequence:
-                if LINES[stop_time_instance.stop.id.lower()] is _Line.INNER_CITY:
+                stop = stop_time_instance.stop
+                while stop.parent_station is not None:
+                    stop = stop.parent_station
+                if LINES[stop.id.lower()] is _Line.INNER_CITY:
                     destination = "City & " + destination
                     break
 
