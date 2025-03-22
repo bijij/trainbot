@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Any
 
 import discord
 import discord.app_commands
-import discord.ui
 
 from ...gtfs.types import Direction, RouteType
 from ...health import HealthStatusId

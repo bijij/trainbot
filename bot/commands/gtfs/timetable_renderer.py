@@ -4,16 +4,17 @@ from enum import Enum, Flag, auto
 from random import choice
 from typing import Literal, Self, overload
 
-from ...gtfs.types import Direction, Route, RouteType, Stop, StopTimeInstance
+from ...gtfs.types import Direction, RouteType, Stop, StopTimeInstance
 
-ANSI_ESCAPE = "\033[0;"
-ANSI_RESET = f"{ANSI_ESCAPE}0m"
-ZWSP = "\u200b"
-
-ANSI_FORMATING = {...}
+_ANSI_ESCAPE = "\033[0;"
+_ANSI_RESET = f"{_ANSI_ESCAPE}0m"
+_ZWSP = "\u200b"
 
 
-class DiscordAnsiColour(Enum):
+__all__ = ("render_timetable",)
+
+
+class _DiscordAnsiColour(Enum):
     """Represents the colours that can be used in Discord messages."""
 
     GREY = auto()
@@ -44,7 +45,7 @@ class DiscordAnsiColour(Enum):
         # Find the closest colour
         closest = cls.GREY
         closest_distance = float("inf")
-        for discord_colour, rgb in COLOUR_MAP.items():
+        for discord_colour, rgb in _COLOUR_MAP.items():
             distance = sum((a - b) ** 2 for a, b in zip(rgb, (r, g, b)))
             if distance < closest_distance:
                 closest = discord_colour
@@ -72,90 +73,90 @@ class DiscordAnsiColour(Enum):
             while destination.parent_station is not None:
                 destination = destination.parent_station
 
-            if destination.id.lower() in INNER_CITY_STATIONS:
-                return DiscordAnsiColour.GREY  # type: ignore
+            if _LINES[destination.id] & _Line.INNER_CITY:
+                return _DiscordAnsiColour.GREY  # type: ignore
 
             short_name = service.trip.route.short_name[-2:]
         else:
             short_name = service.trip.route.short_name
 
-        return ROUTE_COLOURS.get(service.trip.route.type, {}).get(short_name, cls.from_colour(service.trip.route.colour))  # type: ignore
+        return _ROUTE_COLOURS.get(service.trip.route.type, {}).get(short_name, cls.from_colour(service.trip.route.colour))  # type: ignore
 
     @property
     def code(self) -> str:
-        """Returns the ANSI code for the colour."""
-        return COLOUR_CODES[self]
+        """str: The ANSI escape code for the colour."""
+        return _COLOUR_CODES[self]
 
 
-COLOUR_MAP = {
-    DiscordAnsiColour.GREY: (0x40, 0x40, 0x40),
-    DiscordAnsiColour.RED: (0xFF, 0x00, 0x00),
-    DiscordAnsiColour.YELLOW: (0xFF, 0xFF, 0x00),
-    DiscordAnsiColour.GREEN: (0x00, 0xFF, 0x00),
-    DiscordAnsiColour.CYAN: (0x00, 0xFF, 0xFF),
-    DiscordAnsiColour.BLUE: (0x00, 0x00, 0xFF),
-    DiscordAnsiColour.MAGENTA: (0xFF, 0x00, 0xFF),
-    DiscordAnsiColour.WHITE: (0xFF, 0xFF, 0xFF),
+_COLOUR_MAP = {
+    _DiscordAnsiColour.GREY: (0x40, 0x40, 0x40),
+    _DiscordAnsiColour.RED: (0xFF, 0x00, 0x00),
+    _DiscordAnsiColour.YELLOW: (0xFF, 0xFF, 0x00),
+    _DiscordAnsiColour.GREEN: (0x00, 0xFF, 0x00),
+    _DiscordAnsiColour.CYAN: (0x00, 0xFF, 0xFF),
+    _DiscordAnsiColour.BLUE: (0x00, 0x00, 0xFF),
+    _DiscordAnsiColour.MAGENTA: (0xFF, 0x00, 0xFF),
+    _DiscordAnsiColour.WHITE: (0xFF, 0xFF, 0xFF),
 }
 
 
-ROUTE_COLOURS = {
+_ROUTE_COLOURS = {
     RouteType.RAIL: {
-        "GY": DiscordAnsiColour.GREEN,
-        "NA": DiscordAnsiColour.GREEN,
-        "CA": DiscordAnsiColour.GREEN,
-        "RP": DiscordAnsiColour.CYAN,
-        "SH": DiscordAnsiColour.BLUE,
-        "BD": DiscordAnsiColour.YELLOW,
-        "DB": DiscordAnsiColour.MAGENTA,
-        "FG": DiscordAnsiColour.RED,
-        "BR": DiscordAnsiColour.GREY,
-        "CL": DiscordAnsiColour.BLUE,
-        "BN": DiscordAnsiColour.RED,
-        "VL": DiscordAnsiColour.YELLOW,
-        "SP": DiscordAnsiColour.CYAN,
-        "IP": DiscordAnsiColour.GREEN,
-        "RW": DiscordAnsiColour.GREEN,
+        "GY": _DiscordAnsiColour.GREEN,
+        "NA": _DiscordAnsiColour.GREEN,
+        "CA": _DiscordAnsiColour.GREEN,
+        "RP": _DiscordAnsiColour.CYAN,
+        "SH": _DiscordAnsiColour.BLUE,
+        "BD": _DiscordAnsiColour.YELLOW,
+        "DB": _DiscordAnsiColour.MAGENTA,
+        "FG": _DiscordAnsiColour.RED,
+        "BR": _DiscordAnsiColour.GREY,
+        "CL": _DiscordAnsiColour.BLUE,
+        "BN": _DiscordAnsiColour.RED,
+        "VL": _DiscordAnsiColour.YELLOW,
+        "SP": _DiscordAnsiColour.CYAN,
+        "IP": _DiscordAnsiColour.GREEN,
+        "RW": _DiscordAnsiColour.GREEN,
     },
     RouteType.BUS: {
-        "M1": DiscordAnsiColour.BLUE,
-        "M2": DiscordAnsiColour.BLUE,
-        "30": DiscordAnsiColour.YELLOW,
-        "40": DiscordAnsiColour.RED,
-        "50": DiscordAnsiColour.RED,
-        "60": DiscordAnsiColour.BLUE,
-        "61": DiscordAnsiColour.RED,
-        "66": DiscordAnsiColour.BLUE,
+        "M1": _DiscordAnsiColour.BLUE,
+        "M2": _DiscordAnsiColour.BLUE,
+        "30": _DiscordAnsiColour.YELLOW,
+        "40": _DiscordAnsiColour.RED,
+        "50": _DiscordAnsiColour.RED,
+        "60": _DiscordAnsiColour.BLUE,
+        "61": _DiscordAnsiColour.RED,
+        "66": _DiscordAnsiColour.BLUE,
     },
     RouteType.FERRY: {
-        "F1": DiscordAnsiColour.BLUE,
-        "F11": DiscordAnsiColour.GREEN,
-        "F12": DiscordAnsiColour.MAGENTA,
-        "F21": DiscordAnsiColour.CYAN,
-        "F22": DiscordAnsiColour.YELLOW,
-        "F23": DiscordAnsiColour.RED,
-        "F24": DiscordAnsiColour.GREEN,
+        "F1": _DiscordAnsiColour.BLUE,
+        "F11": _DiscordAnsiColour.GREEN,
+        "F12": _DiscordAnsiColour.MAGENTA,
+        "F21": _DiscordAnsiColour.CYAN,
+        "F22": _DiscordAnsiColour.YELLOW,
+        "F23": _DiscordAnsiColour.RED,
+        "F24": _DiscordAnsiColour.GREEN,
     },
 }
 
 
-COLOUR_CODES = {
-    DiscordAnsiColour.GREY: "30",
-    DiscordAnsiColour.RED: "31",
-    DiscordAnsiColour.GREEN: "32",
-    DiscordAnsiColour.YELLOW: "33",
-    DiscordAnsiColour.BLUE: "34",
-    DiscordAnsiColour.MAGENTA: "35",
-    DiscordAnsiColour.CYAN: "36",
-    DiscordAnsiColour.WHITE: "37",
+_COLOUR_CODES = {
+    _DiscordAnsiColour.GREY: "30",
+    _DiscordAnsiColour.RED: "31",
+    _DiscordAnsiColour.GREEN: "32",
+    _DiscordAnsiColour.YELLOW: "33",
+    _DiscordAnsiColour.BLUE: "34",
+    _DiscordAnsiColour.MAGENTA: "35",
+    _DiscordAnsiColour.CYAN: "36",
+    _DiscordAnsiColour.WHITE: "37",
 }
 
 
-SCREEN_WIDTH = 48
-MAX_NEXT_TRAINS = 6
+_SCREEN_WIDTH = 48
+_MAX_NEXT_TRAINS = 6
 
 
-def _with_formatting(text: str, colour: DiscordAnsiColour | None = None, bold: bool = False, underline: bool = False) -> str:
+def _with_formatting(text: str, colour: _DiscordAnsiColour | None = None, bold: bool = False, underline: bool = False) -> str:
     """Formats text with ANSI escape codes.
 
     Parameters
@@ -185,10 +186,12 @@ def _with_formatting(text: str, colour: DiscordAnsiColour | None = None, bold: b
     if underline:
         codes.append("4")
 
-    return f"{ANSI_ESCAPE}{";".join(codes)}m{text.rstrip()}{ANSI_RESET}"
+    return f"{_ANSI_ESCAPE}{";".join(codes)}m{text.rstrip()}{_ANSI_RESET}"
 
 
 class _Line(Flag):
+    """Represents the train lines in the Brisbane Citytrain network."""
+
     NONE = 0
     NORTH_COAST = 0x1
     KIPPA_RING = 0x2
@@ -203,11 +206,27 @@ class _Line(Flag):
     ROSEWOOD = 0x400
 
 
+_END_OF_LINE = {
+    "place_gymsta": _Line.NORTH_COAST,  # Gympie North
+    "place_kprsta": _Line.KIPPA_RING,  # Kippa-Ring
+    "place_shnsta": _Line.SHORNCLIFFE,  # Shorncliffe
+    "place_intsta": _Line.AIRPORT,  # International Airport
+    "place_dbnsta": _Line.DOOMBEN,  # Doomben
+    "place_fersta": _Line.FERNY_GROVE,  # Ferny Grove
+    "place_clesta": _Line.CLEVELAND,  # Cleveland
+    "place_varsta": _Line.GOLD_COAST,  # Varsity Lakes
+    "place_spcsta": _Line.SPRINGFIELD,  # Springfield Central
+    "place_rossta": _Line.ROSEWOOD,  # Rosewood
+}
+
+
 NORTHSIDE = _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.AIRPORT | _Line.DOOMBEN | _Line.FERNY_GROVE
 SOUTHSIDE = _Line.CLEVELAND | _Line.GOLD_COAST | _Line.SPRINGFIELD | _Line.ROSEWOOD
 
 
-class _Orientation(Flag):
+class _CardinalDirection(Flag):
+    """Represents a cardinal direction."""
+
     NONE = 0
     NORTH = 0x1
     SOUTH = 0x2
@@ -215,31 +234,17 @@ class _Orientation(Flag):
     WEST = 0x8
 
 
-OUTBOUND_DIRECTIONS = {
-    _Line.NORTH_COAST: _Orientation.NORTH,
-    _Line.KIPPA_RING: _Orientation.NORTH,
-    _Line.SHORNCLIFFE: _Orientation.NORTH,
-    _Line.AIRPORT: _Orientation.NORTH,
-    _Line.DOOMBEN: _Orientation.EAST,
-    _Line.FERNY_GROVE: _Orientation.NORTH,
-    _Line.CLEVELAND: _Orientation.SOUTH | _Orientation.EAST,
-    _Line.GOLD_COAST: _Orientation.SOUTH,
-    _Line.SPRINGFIELD: _Orientation.SOUTH,
-    _Line.ROSEWOOD: _Orientation.WEST,
-}
-
-
-END_OF_LINE = {
-    "place_gymsta",  # Gympie North
-    "place_kprsta",  # Kippa-Ring
-    "place_shnsta",  # Shorncliffe
-    "place_intsta",  # International Airport
-    "place_dbnsta",  # Doomben
-    "place_fersta",  # Ferny Grove
-    "place_clesta",  # Cleveland
-    "place_varsta",  # Varsity Lakes
-    "place_spcsta",  # Springfield Central
-    "place_rossta",  # Rosewood
+_OUTBOUND_DIRECTIONS = {
+    _Line.NORTH_COAST: _CardinalDirection.NORTH,
+    _Line.KIPPA_RING: _CardinalDirection.NORTH,
+    _Line.SHORNCLIFFE: _CardinalDirection.NORTH,
+    _Line.AIRPORT: _CardinalDirection.NORTH,
+    _Line.DOOMBEN: _CardinalDirection.EAST,
+    _Line.FERNY_GROVE: _CardinalDirection.NORTH,
+    _Line.CLEVELAND: _CardinalDirection.SOUTH | _CardinalDirection.EAST,
+    _Line.GOLD_COAST: _CardinalDirection.SOUTH,
+    _Line.SPRINGFIELD: _CardinalDirection.SOUTH,
+    _Line.ROSEWOOD: _CardinalDirection.WEST,
 }
 
 
@@ -248,28 +253,30 @@ def _get_header_text(stop_id: str, slim: bool = False) -> Mapping[Direction, str
 
     Parameters
     ----------
-    line : _Line
-        The line to get the header text for.
+    stop_id : str
+        The stop ID.
+    slim : bool, optional
+        Whether to render the slim version of the text.
 
     Returns
     -------
     Mapping[Direction, str]
         The header text for the line for each direction.
     """
-    line = LINES[stop_id.lower()]
-
-    if line is _Line.INNER_CITY:
+    if _LINES[stop_id] is _Line.INNER_CITY:
         if slim:
             return {Direction.UPWARD: "South/West", Direction.DOWNWARD: "North"}
         return {Direction.UPWARD: "(1-6) South/West", Direction.DOWNWARD: "(1-6) North"}
 
-    outbound_orientation = _Orientation.NONE
+    outbound_orientation = _CardinalDirection.NONE
+    line = _LINES[stop_id]
+
     for line_ in _Line:
         if line & line_:
-            outbound_orientation |= OUTBOUND_DIRECTIONS[line_]
+            outbound_orientation |= _OUTBOUND_DIRECTIONS[line_]
 
     outbound_orientation_text = "/".join(
-        orientation.name.title() for orientation in _Orientation if outbound_orientation & orientation  # type: ignore
+        orientation.name.title() for orientation in _CardinalDirection if outbound_orientation & orientation  # type: ignore
     )
 
     if line & NORTHSIDE:
@@ -280,9 +287,6 @@ def _get_header_text(stop_id: str, slim: bool = False) -> Mapping[Direction, str
         upward_text = outbound_orientation_text
 
     return {Direction.DOWNWARD: downward_text, Direction.UPWARD: upward_text}
-
-
-# TODO: Figure out how to do this without hardcoding the stop IDs
 
 
 def _get_inbound_direction(stop_id: str) -> Direction:
@@ -298,7 +302,7 @@ def _get_inbound_direction(stop_id: str) -> Direction:
     Direction
         The inbound direction.
     """
-    line = LINES[stop_id.lower()]
+    line = _LINES[stop_id]
 
     if line & NORTHSIDE:
         return Direction.UPWARD
@@ -306,9 +310,12 @@ def _get_inbound_direction(stop_id: str) -> Direction:
         return Direction.DOWNWARD
 
 
-LINES = {
+# TODO: Figure out how to do this without hardcoding the stop IDs
+
+
+_LINES = {
     # fmt: off
-    "place_albsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.AIRPORT | _Line.DOOMBEN,  # Albion
+    "place_albsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.AIRPORT | _Line.DOOMBEN | _Line.INNER_CITY,  # Albion
     "place_aldsta": _Line.FERNY_GROVE,  # Alderley
     "place_altsta": _Line.GOLD_COAST,  # Altandi
     "place_ascsta": _Line.DOOMBEN,  # Ascot
@@ -321,10 +328,10 @@ LINES = {
     "place_betsta": _Line.GOLD_COAST,  # Bethania
     "place_binsta": _Line.SHORNCLIFFE,  # Bindha
     "place_birsta": _Line.CLEVELAND,  # Birkdale
-    "place_parsta": _Line.CLEVELAND | _Line.GOLD_COAST,  # Boggo Road/Park Road
+    "place_parsta": _Line.CLEVELAND | _Line.GOLD_COAST | _Line.INNER_CITY,  # Boggo Road/Park Road
     "place_bdlsta": _Line.SHORNCLIFFE,  # Boondall
     "place_bvlsta": _Line.ROSEWOOD,  # Booval
-    "place_bowsta": _Line.NORTH_COAST | _Line.KIPPA_RING| _Line.SHORNCLIFFE | _Line.AIRPORT| _Line.DOOMBEN | _Line.FERNY_GROVE,  # Bowen Hills
+    "place_bowsta": _Line.NORTH_COAST | _Line.KIPPA_RING| _Line.SHORNCLIFFE | _Line.AIRPORT| _Line.DOOMBEN | _Line.FERNY_GROVE | _Line.INNER_CITY,  # Bowen Hills
     "place_brasta": _Line.NORTH_COAST | _Line.KIPPA_RING,  # Bray Park
     "place_bunsta": _Line.ROSEWOOD,  # Bundamba
     "place_bursta": _Line.NORTH_COAST,  # Burpengary
@@ -348,7 +355,7 @@ LINES = {
     "place_domsta": _Line.AIRPORT,  # Domestic Airport
     "place_dbnsta": _Line.DOOMBEN,  # Doomben
     "place_dupsta": _Line.GOLD_COAST,  # Dutton Park
-    "place_egjsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.AIRPORT | _Line.DOOMBEN,  # Eagle Junction
+    "place_egjsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.AIRPORT | _Line.DOOMBEN | _Line.INNER_CITY,  # Eagle Junction
     "place_eassta": _Line.ROSEWOOD,  # East Ipswich
     "place_ebbsta": _Line.ROSEWOOD,  # Ebbw Vale
     "place_edesta": _Line.GOLD_COAST,  # Edens Landing
@@ -403,9 +410,9 @@ LINES = {
     "place_newsta": _Line.FERNY_GROVE,  # Newmarket
     "place_npksta": _Line.CLEVELAND,  # Norman Park
     "place_nobsta": _Line.SHORNCLIFFE,  # North Boondall
-    "place_norsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE,  # Northgate
+    "place_norsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.INNER_CITY,  # Northgate
     "place_nudsta": _Line.SHORNCLIFFE,  # Nudgee
-    "place_nunsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE,  # Nundah
+    "place_nunsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.INNER_CITY,  # Nundah
     "place_omesta": _Line.GOLD_COAST,  # Ormeau
     "place_ormsta": _Line.CLEVELAND,  # Ormiston
     "place_oxfsta": _Line.FERNY_GROVE,  # Oxford Park
@@ -425,8 +432,8 @@ LINES = {
     "place_sgtsta": _Line.SHORNCLIFFE,  # Sandgate
     "place_shesta": _Line.ROSEWOOD | _Line.SPRINGFIELD,  # Sherwood
     "place_shnsta": _Line.SHORNCLIFFE,  # Shorncliffe
-    "place_sbasta": _Line.CLEVELAND | _Line.GOLD_COAST,  # South Bank
-    "place_sousta": _Line.CLEVELAND | _Line.GOLD_COAST,  # South Brisbane
+    "place_sbasta": _Line.CLEVELAND | _Line.GOLD_COAST | _Line.INNER_CITY,  # South Bank
+    "place_sousta": _Line.CLEVELAND | _Line.GOLD_COAST | _Line.INNER_CITY,  # South Brisbane
     "place_spcsta": _Line.SPRINGFIELD,  # Springfield Central
     "place_sprsta": _Line.SPRINGFIELD,  # Springfield
     "place_strsta": _Line.NORTH_COAST | _Line.KIPPA_RING,  # Strathpine
@@ -436,7 +443,7 @@ LINES = {
     "place_thasta": _Line.ROSEWOOD,  # Thagoona
     "place_thmsta": _Line.ROSEWOOD,  # Thomas Street
     "place_thosta": _Line.CLEVELAND,  # Thorneside
-    "place_tomsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE,  # Toombul
+    "place_tomsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.INNER_CITY,  # Toombul
     "place_twgsta": _Line.ROSEWOOD | _Line.SPRINGFIELD,  # Toowong
     "place_trvsta": _Line.NORTH_COAST,  # Traveston
     "place_trista": _Line.GOLD_COAST,  # Trinder Park
@@ -448,7 +455,7 @@ LINES = {
     "place_wilsta": _Line.FERNY_GROVE,  # Wilston
     "place_winsta": _Line.FERNY_GROVE,  # Windsor
     "place_wdrsta": _Line.GOLD_COAST,  # Woodridge
-    "place_wolsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.AIRPORT | _Line.DOOMBEN,  # Wooloowin
+    "place_wolsta": _Line.NORTH_COAST | _Line.KIPPA_RING | _Line.SHORNCLIFFE | _Line.AIRPORT | _Line.DOOMBEN | _Line.INNER_CITY,  # Wooloowin
     "place_wbysta": _Line.NORTH_COAST,  # Woombye
     "place_wulsta": _Line.ROSEWOOD,  # Wulkuraka
     "place_wynsta": _Line.CLEVELAND,  # Wynnum Central
@@ -461,24 +468,6 @@ LINES = {
     # Zillmere
     # fmt: on
 }
-
-
-INNER_CITY_STATIONS = {
-    "place_norsta",
-    "place_nunsta",
-    "place_tomsta",
-    "place_egjsta",
-    "place_wolsta",
-    "place_albsta",
-    "place_bowsta",
-    "place_forsta",
-    "place_censta",
-    "place_romsta",
-    "place_sousta",
-    "place_sbasta",
-    "place_parsta",
-}
-
 
 STATION_RENAMES = {
     "place_intsta": "Airport",
@@ -494,19 +483,35 @@ DESTINATION_PREPEND_STATIONS = {
 
 
 NO_TRAINS_TEXT = [
-    ZWSP,
+    _ZWSP,
     "THERE ARE NO {direction} TRAINS",
     "DEPARTING FROM THIS STATION",
     "IN THE NEXT {lookahead} HOURS",
-    ZWSP,
-    ZWSP,
+    _ZWSP,
+    _ZWSP,
 ]
 
 
-NO_TRAINS_SLIM_TEXT = ["THERE ARE NO {direction} TRAINS DEPARTING", "FROM THIS STATION IN THE NEXT {lookahead} HOURS", ZWSP]
+NO_TRAINS_SLIM_TEXT = [
+    "THERE ARE NO {direction} TRAINS DEPARTING",
+    "FROM THIS STATION IN THE NEXT {lookahead} HOURS",
+    _ZWSP,
+]
 
 
 def _get_station_name(stop: Stop) -> str:
+    """Returns the name of a station for use in a train bar.
+
+    Parameters
+    ----------
+    stop : Stop
+        The stop to get the name for.
+
+    Returns
+    -------
+    str
+        The name of the station.
+    """
     while stop.parent_station is not None:
         stop = stop.parent_station
 
@@ -517,17 +522,30 @@ def _get_station_name(stop: Stop) -> str:
 
 
 def _is_city_service(service: StopTimeInstance) -> bool:
+    """Checks if a service is a city service.
+    A service is defined as a city service if a subsequent stop is an inner-city station.
+
+    Parameters
+    ----------
+    service : StopTimeInstance
+        The service to check.
+
+    Returns
+    -------
+    bool
+        True if the service is a city service, False otherwise.
+    """
     stop = service.stop
     while stop.parent_station is not None:
         stop = stop.parent_station
 
-    if LINES[stop.id] is not _Line.INNER_CITY:
+    if _LINES[stop.id] is not _Line.INNER_CITY:
         for stop_time_instance in service.trip.stop_times:
             if stop_time_instance.sequence > service.sequence:
                 stop = stop_time_instance.stop
                 while stop.parent_station is not None:
                     stop = stop.parent_station
-                if LINES[stop.id] is _Line.INNER_CITY:
+                if _LINES[stop.id] is _Line.INNER_CITY:
                     return True
 
     return False
@@ -579,20 +597,38 @@ def _render_train_bar(stop: Stop, now: datetime.datetime, service: StopTimeInsta
 
     return (
         _with_formatting(
-            f"{scheduled_time:<7}{destination:<{SCREEN_WIDTH - 20}}{service.stop.platform_code:<7}{departs:>6}",
-            DiscordAnsiColour.from_service(service),
+            f"{scheduled_time:<7}{destination:<{_SCREEN_WIDTH - 20}}{service.stop.platform_code:<7}{departs:>6}",
+            _DiscordAnsiColour.from_service(service),
         )
         + "\n"
     )
 
 
 def _render_train_bars(stop: Stop, now: datetime.datetime, services: Sequence[StopTimeInstance], max_bars: int) -> str:
+    """Renders train bars for a stop.
+
+    Parameters
+    ----------
+    stop : Stop
+        The stop to render the bars for.
+    now : datetime.datetime
+        The current time.
+    services : Sequence[StopTimeInstance]
+        The services to render.
+    max_bars : int
+        The maximum number of bars to render.
+
+    Returns
+    -------
+    str
+        The rendered bars.
+    """
     text = ""
 
     for service in services[:max_bars]:
         text += _render_train_bar(stop, now, service)
     for _ in range(max_bars - len(services)):
-        text += ZWSP + "\n"
+        text += _ZWSP + "\n"
 
     return text
 
@@ -620,7 +656,7 @@ def _render_no_trains_text(direction: str, lookahead_hours: int, slim: bool = Fa
         text = NO_TRAINS_TEXT
 
     return "\n".join(
-        _with_formatting(f"{line.format(direction=direction, lookahead=lookahead_hours):^{SCREEN_WIDTH}}", DiscordAnsiColour.WHITE)
+        _with_formatting(f"{line.format(direction=direction, lookahead=lookahead_hours):^{_SCREEN_WIDTH}}", _DiscordAnsiColour.WHITE)
         for line in text
     )
 
@@ -658,8 +694,7 @@ def _render_train_timetable(
     inbound_direction = _get_inbound_direction(stop.id)
     outbound_direction = Direction.DOWNWARD if inbound_direction is Direction.UPWARD else Direction.UPWARD
 
-    line = LINES[stop.id.lower()]
-    if line is _Line.INNER_CITY:
+    if _LINES[stop.id] is _Line.INNER_CITY:
         up_text = "SOUTHBOUND"
         down_text = "NORTHBOUND"
     else:
@@ -668,8 +703,8 @@ def _render_train_timetable(
 
     if direction is not None:
         text = (
-            _with_formatting(f"[{now.strftime("%I:%M:%S")}]", DiscordAnsiColour.YELLOW, bold=True)
-            + _with_formatting(f"{f"Next Trains {_get_header_text(stop.id)[direction]}":^{SCREEN_WIDTH - 10}}", DiscordAnsiColour.WHITE)
+            _with_formatting(f"[{now.strftime("%I:%M:%S")}]", _DiscordAnsiColour.YELLOW, bold=True)
+            + _with_formatting(f"{f"Next Trains {_get_header_text(stop.id)[direction]}":^{_SCREEN_WIDTH - 10}}", _DiscordAnsiColour.WHITE)
             + "\n"
         )
 
@@ -677,38 +712,38 @@ def _render_train_timetable(
 
         if services:
             text += "Service                        Platform  Departs\n"
-            text += _render_train_bars(stop, now, services, MAX_NEXT_TRAINS)
+            text += _render_train_bars(stop, now, services, _MAX_NEXT_TRAINS)
 
         else:
             text += _render_no_trains_text(up_text if direction is Direction.UPWARD else down_text, lookahead_hours) + "\n"
 
     else:
-        if LINES[stop.id.lower()] is _Line.INNER_CITY:
+        if _LINES[stop.id] is _Line.INNER_CITY:
             text = (
-                _with_formatting(f"[{now.strftime("%I:%M:%S")}]", DiscordAnsiColour.YELLOW, bold=True)
-                + _with_formatting(f"{f"Next 3 Trains North and South/West":^{SCREEN_WIDTH - 10}}", DiscordAnsiColour.WHITE)
+                _with_formatting(f"[{now.strftime("%I:%M:%S")}]", _DiscordAnsiColour.YELLOW, bold=True)
+                + _with_formatting(f"{f"Next 3 Trains North and South/West":^{_SCREEN_WIDTH - 10}}", _DiscordAnsiColour.WHITE)
                 + "\n"
             )
         else:
             text = (
-                _with_formatting(f"[{now.strftime("%I:%M:%S")}]", DiscordAnsiColour.YELLOW, bold=True)
-                + _with_formatting(f"{f"Next 3 Inbound and Outbound Trains":^{SCREEN_WIDTH - 10}}", DiscordAnsiColour.WHITE)
+                _with_formatting(f"[{now.strftime("%I:%M:%S")}]", _DiscordAnsiColour.YELLOW, bold=True)
+                + _with_formatting(f"{f"Next 3 Inbound and Outbound Trains":^{_SCREEN_WIDTH - 10}}", _DiscordAnsiColour.WHITE)
                 + "\n"
             )
 
-        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[inbound_direction]:<{SCREEN_WIDTH - 29}}"}Platform  Departs\n"
+        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[inbound_direction]:<{_SCREEN_WIDTH - 29}}"}Platform  Departs\n"
         inbound_services = upward_services if inbound_direction is Direction.UPWARD else downward_services
         if inbound_services:
-            text += _render_train_bars(stop, now, inbound_services, MAX_NEXT_TRAINS // 2)
+            text += _render_train_bars(stop, now, inbound_services, _MAX_NEXT_TRAINS // 2)
         else:
             text += (
                 _render_no_trains_text(up_text if inbound_direction is Direction.UPWARD else down_text, lookahead_hours, slim=True) + "\n"
             )
 
-        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[outbound_direction]:<{SCREEN_WIDTH - 29}}"}Platform  Departs\n"
+        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[outbound_direction]:<{_SCREEN_WIDTH - 29}}"}Platform  Departs\n"
         outbound_services = upward_services if outbound_direction is Direction.UPWARD else downward_services
         if outbound_services:
-            text += _render_train_bars(stop, now, outbound_services, MAX_NEXT_TRAINS // 2)
+            text += _render_train_bars(stop, now, outbound_services, _MAX_NEXT_TRAINS // 2)
         else:
             text += (
                 _render_no_trains_text(up_text if outbound_direction is Direction.UPWARD else down_text, lookahead_hours, slim=True) + "\n"
@@ -717,14 +752,13 @@ def _render_train_timetable(
     return text
 
 
-NO_SERVICES_TEXT = """\
-
-             THERE ARE NO SERVICES
-              DEPARTING THIS STOP
-              IN THE NEXT {} HOURS
-
-
-"""
+NO_SERVICES_TEXT = [
+    _ZWSP,
+    "THERE ARE NO SERVICES",
+    "DEPARTING THIS STOP",
+    "IN THE NEXT {lookahead} HOURS",
+    _ZWSP,
+]
 
 
 def _render_bus_timetable(
@@ -751,7 +785,7 @@ def _render_bus_timetable(
     str
         The rendered timetable.
     """
-    text = _with_formatting("Route  Destination                       Departs", DiscordAnsiColour.WHITE, bold=True) + "\n"
+    text = _with_formatting("Route  Destination                       Departs", _DiscordAnsiColour.WHITE, bold=True) + "\n"
     for service in services:
         departs_minutes = (service.actual_departure_time - now).seconds // 60
         if departs_minutes < 60:
@@ -760,27 +794,31 @@ def _render_bus_timetable(
             departs = service.actual_departure_time.strftime("%H:%M")
         text += (
             _with_formatting(
-                f"{service.trip.route.short_name:<7}{service.trip.headsign:<{SCREEN_WIDTH-13}}{departs:>6}",
-                DiscordAnsiColour.from_service(service),
+                f"{service.trip.route.short_name:<7}{service.trip.headsign:<{_SCREEN_WIDTH-13}}{departs:>6}",
+                _DiscordAnsiColour.from_service(service),
             )
             + "\n"
         )
 
     if not services:
-        text += _with_formatting(NO_SERVICES_TEXT.format(lookahead_hours), DiscordAnsiColour.WHITE)
+
+        text += "\n".join(
+            _with_formatting(f"{line.format(lookahead=lookahead_hours):^{_SCREEN_WIDTH}}", _DiscordAnsiColour.WHITE)
+            for line in NO_SERVICES_TEXT
+        )
 
     return text
 
 
-TRAM_FOOTERS = [
-    """\
-                For your safety
-        CCTV is in operation at all times\
-""",
-    """\
-                  NO SMOKING
-                                      No smoking\
-""",
+_TRAM_FOOTERS = [
+    [
+        f"{"For your safety":^{_SCREEN_WIDTH}}",
+        f"{'CCTV is in operation at all times':^{_SCREEN_WIDTH}}",
+    ],
+    [
+        f"{"NO SMOKING":^{_SCREEN_WIDTH}}",
+        f"{'No smoking':>{_SCREEN_WIDTH}}",
+    ],
 ]
 
 
@@ -814,13 +852,13 @@ def _render_tram_timetable(now: datetime.datetime, stop_times: Sequence[StopTime
                 departs = stop_time.actual_departure_time.strftime("%H:%M")
 
             text += _with_formatting(
-                f"Plat{stop_time.stop.platform_code:<3}{destination:<{SCREEN_WIDTH-14}}{departs:>6}\n", DiscordAnsiColour.YELLOW
+                f"Plat{stop_time.stop.platform_code:<3}{destination:<{_SCREEN_WIDTH-14}}{departs:>6}\n", _DiscordAnsiColour.YELLOW
             )
         else:
-            text += f"{ZWSP}\n"
+            text += f"{_ZWSP}\n"
 
-    text += _with_formatting(f"{now.strftime("%I:%M:%S %p").lower():^{SCREEN_WIDTH}}\n", DiscordAnsiColour.WHITE, bold=True)
-    text += choice(TRAM_FOOTERS)
+    text += _with_formatting(f"{now.strftime("%I:%M:%S %p").lower():^{_SCREEN_WIDTH}}\n", _DiscordAnsiColour.WHITE, bold=True)
+    text += "\n".join(line for line in choice(_TRAM_FOOTERS))
 
     return text
 
@@ -904,7 +942,7 @@ def render_timetable(
         The rendered timetable.
     """
     if type is RouteType.RAIL:
-        if direction is None and stop.id.lower() in END_OF_LINE:
+        if direction is None and stop.id in _END_OF_LINE:
             direction = _get_inbound_direction(stop.id)
 
         upward_services = [service for service in services if service.trip.direction is Direction.UPWARD]

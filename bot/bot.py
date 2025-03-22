@@ -84,4 +84,5 @@ class TrainBot(discord.Client, Service):
         self.loop.create_task(discord.Client.start(self, self.config.token))
 
     async def stop(self, *, timeout: float | None = None) -> None:
+        _log.info("Stopping bot...")
         await discord.Client.__aexit__(self, None, None, None)

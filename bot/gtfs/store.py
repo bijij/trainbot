@@ -68,12 +68,15 @@ class GtfsDataStore:
     def clear(self) -> None:
         """Clears all data from the data store."""
         self._routes.clear()
+        self._services_exceptions.clear()
         self._services.clear()
         self._trips.clear()
         self._trips_by_route.clear()
         self._trips_by_service.clear()
         self._stops.clear()
+        self._children_stops.clear()
         self._stop_times_by_trip.clear()
+        self._route_types_by_stop.clear()
         self._trip_instances_by_date.clear()
         self._stop_time_instances_by_date.clear()
         self._stop_time_instances_by_stop.clear()
@@ -224,6 +227,23 @@ class GtfsDataStore:
                 for stop_time_instances in self._stop_time_instances_by_date[date].values():
                     for stop_time_instance in stop_time_instances.values():
                         self._stop_time_instances_by_stop[stop_time_instance._stop_id].append(stop_time_instance)
+
+    def reset_realtime_data(self, trip_id: str, date: datetime.date) -> None:
+        """Resets the real-time data for a trip instance.
+
+        Parameters
+        ----------
+        trip_id : str
+            The ID of the trip instance to reset.
+        date : datetime.date
+            The date of the trip instance to reset.
+        """
+        self._trip_instances_by_date[date][trip_id.lower()].cancelled = False
+
+        for stop_time_instance in self._stop_time_instances_by_date[date][trip_id.lower()].values():
+            stop_time_instance.skipped = False
+            stop_time_instance._actual_arrival_time = None
+            stop_time_instance._actual_departure_time = None
 
     def set_trip_instance_status(self, trip_id: str, date: datetime.date, cancelled: bool) -> None:
         """Sets the status of a trip instance.

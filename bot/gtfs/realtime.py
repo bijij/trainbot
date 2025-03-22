@@ -9,7 +9,7 @@ from discord.ext.tasks import loop
 from malamar import Service
 
 from ..health import HealthStatusId
-from .proto.types import FeedMessage, TripUpdate
+from .proto import FeedMessage, TripUpdate
 from .store import GtfsDataStore
 
 TRIP_UPDATE_URL = "https://gtfsrt.api.translink.com.au/api/realtime/SEQ/TripUpdates"
@@ -49,7 +49,16 @@ class RealtimeGtfsHandler(Service):
 
         self._update_gtfs_realtime_data.add_exception_type(aiohttp.ClientError)
 
-    async def _process_trip_update(self, trip_update: TripUpdate) -> None:
+    async def _process_trip_update(self, trip_update: TripUpdate, deleted: bool = True) -> None:
+        """Process a trip update from the GTFS realtime feed.
+
+        Parameters
+        ----------
+        trip_update : TripUpdate
+            The trip update to process.
+        deleted : bool
+            Whether the trip update is a deletion.
+        """
         if trip_update.trip.trip_id is None:
             return  # We can't handle trip updates without a trip ID at the moment
         if trip_update.trip.start_date is None:
@@ -57,6 +66,10 @@ class RealtimeGtfsHandler(Service):
 
         # Parse the start date
         start_date = datetime.datetime.strptime(trip_update.trip.start_date, "%Y%m%d").date()
+
+        if deleted:
+            self._data_store.reset_realtime_data(trip_update.trip.trip_id, start_date)
+            return
 
         # Update the cancellation status of the trip instance
         cancelled = trip_update.trip.schedule_relationship == CANCELLED_TRIP_SCHEDULE_RELATIONSHIP
@@ -96,7 +109,7 @@ class RealtimeGtfsHandler(Service):
                 for entity in feed_message.entity:
                     if entity.trip_update:
                         try:
-                            await self._process_trip_update(entity.trip_update)
+                            await self._process_trip_update(entity.trip_update, entity.is_deleted or False)
                         except Exception:
                             # _log.debug("Failed to process trip update")
                             pass
