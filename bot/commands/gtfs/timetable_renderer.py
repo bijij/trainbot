@@ -851,13 +851,16 @@ def _render_tram_timetable(now: datetime.datetime, stop_times: Sequence[StopTime
             else:
                 departs = stop_time.actual_departure_time.strftime("%H:%M")
 
-            text += _with_formatting(
-                f"Plat{stop_time.stop.platform_code:<3}{destination:<{_SCREEN_WIDTH-14}}{departs:>6}\n", _DiscordAnsiColour.YELLOW
+            text += (
+                _with_formatting(
+                    f"Plat{stop_time.stop.platform_code:<3}{destination:<{_SCREEN_WIDTH-14}}{departs:>6}", _DiscordAnsiColour.YELLOW
+                )
+                + "\n"
             )
         else:
             text += f"{_ZWSP}\n"
 
-    text += _with_formatting(f"{now.strftime("%I:%M:%S %p").lower():^{_SCREEN_WIDTH}}\n", _DiscordAnsiColour.WHITE, bold=True)
+    text += _with_formatting(f"{now.strftime("%I:%M:%S %p").lower():^{_SCREEN_WIDTH}}", _DiscordAnsiColour.WHITE) + "\n"
     text += "\n".join(line for line in choice(_TRAM_FOOTERS))
 
     return text
