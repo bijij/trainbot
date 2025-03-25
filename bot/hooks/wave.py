@@ -34,5 +34,5 @@ class Wave(Hook):
 
         for regex in MATCHES:
             if regex.search(message.content):
-                await message.reply(f"🌊 [Ride the wave bro!]({WAVE_PAGE}) 🌊")
+                await message.reply(f"🌊 [Ride the wave bro!](<{WAVE_PAGE}>) 🌊")
                 break
