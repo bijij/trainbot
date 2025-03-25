@@ -8,6 +8,7 @@ from bot.bot import Commands, TrainBot
 from bot.commands import ALL_COMMANDS
 from bot.configuration import Configuration
 from bot.gtfs import GtfsDataStore, GtfsProvider, RealtimeGtfsHandler, StaticGtfsHandler
+from bot.hooks import ALL_HOOKS, Hook
 
 mediator = Mediator()
 health_tracker = HealthTracker(mediator=mediator)
@@ -26,6 +27,9 @@ app.add_service(GtfsProvider)
 
 for command in ALL_COMMANDS:
     app.add_singleton(command, type=Commands)
+
+for hook in ALL_HOOKS:
+    app.add_singleton(hook, type=Hook)
 
 app.add_service(TrainBot)
 

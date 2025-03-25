@@ -1,15 +1,20 @@
+import asyncio
 import logging
+from collections import defaultdict
 from hashlib import md5
 from json import dumps
+from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 import discord
 import discord.app_commands
-import discord.ui
+import discord.ext
+import discord.ext.commands
 from audino import HealthTracker
 from malamar import Application, Service
 from rayquaza import Mediator
 
 from .configuration import Configuration
+from .hooks import Hook
 
 _log = logging.getLogger(__name__)
 
@@ -47,6 +52,7 @@ class TrainBot(discord.Client, Service):
         health_tracker: HealthTracker,
         mediator: Mediator,
         commands: list[Commands],
+        hooks: list[Hook],
     ) -> None:
 
         self.app: Application = app
@@ -63,10 +69,27 @@ class TrainBot(discord.Client, Service):
             allowed_installs=discord.app_commands.installs.AppInstallationType(guild=True, user=True),
         )
 
+        self._event_hooks = defaultdict(list)
+
+        for hook in hooks:
+            self.add_hook(hook.callback, hook.event)
+
         for command in commands:
             self.command_tree.add_command(command)
 
+        discord.ext.commands.Bot
+
         discord.utils.setup_logging()
+
+    def add_hook(self, func: Callable[..., Awaitable[Any]], /, name: str) -> None:
+        if not asyncio.iscoroutinefunction(func):
+            raise TypeError("Listeners must be coroutines")
+        self._event_hooks[name].append(func)
+
+    def dispatch(self, event: str, /, *args: Any, **kwargs: Any) -> None:
+        super().dispatch(event, *args, **kwargs)
+        for hook in self._event_hooks[event]:
+            self._schedule_event(hook, "on_" + event, self, *args, **kwargs)  # type: ignore
 
     async def setup_hook(self) -> None:
         new_hash = _get_commands_hash(self.command_tree)

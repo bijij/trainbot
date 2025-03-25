@@ -62,3 +62,8 @@ class Configuration:
             RouteType.RAIL: 6,
             RouteType.TRAM: 2,
         }
+
+    @property
+    def transit_server_id(self) -> int:
+        """int: The ID of the transit server."""
+        return 1329388671752994836
