@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 MATCHES = [
     re.compile(r"(?:^|\s)DSCL?(?:$|\s)", re.IGNORECASE),
     re.compile(r"(?:^|\s)Direct Sunshine Coast(?:$|\s)", re.IGNORECASE),
+    re.compile(r"(?:^|\s)CAMCOS(?:$|\s)", re.IGNORECASE),
 ]
 
 WAVE_PAGE = "https://www.delivering2032.com.au/legacy-for-queensland/transport"
