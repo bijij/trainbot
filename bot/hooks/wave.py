@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from ..bot import TrainBot
 
 MATCHES = [
-    re.compile(r"(?:^|\s)DSC(?:$|\s)", re.IGNORECASE),
+    re.compile(r"(?:^|\s)DSCL?(?:$|\s)", re.IGNORECASE),
     re.compile(r"(?:^|\s)Direct Sunshine Coast(?:$|\s)", re.IGNORECASE),
 ]
 
