@@ -707,7 +707,7 @@ def _render_train_timetable(
         text = (
             _with_formatting(f"[{now.strftime("%I:%M:%S")}]", _DiscordAnsiColour.YELLOW, bold=True)
             + _with_formatting(
-                f"{f"Next Trains {_get_header_text(stop.id, max_services)[direction], max_services}":^{_SCREEN_WIDTH - 10}}",
+                f"{f"Next Trains {_get_header_text(stop.id, max_services)[direction]}":^{_SCREEN_WIDTH - 10}}",
                 _DiscordAnsiColour.WHITE,
             )
             + "\n"
