@@ -110,7 +110,7 @@ class GetNextServicesRequest(SingleResponseRequest[GetNextServicesResult]):
         The route type to search for.
     """
 
-    def __init__(self, stop_id: str, time: datetime.datetime, route_type: RouteType):
+    def __init__(self, stop_id: str, time: datetime.datetime, route_type: RouteType, max_results: int):
         """Initializes the get next services request."
 
         Parameters
@@ -121,10 +121,13 @@ class GetNextServicesRequest(SingleResponseRequest[GetNextServicesResult]):
             The time to use for the search.
         route_type : RouteType
             The route type to search for.
+        max_results : int
+            The maximum number of results to return.
         """
         self.stop_id: str = stop_id
         self.time: datetime.datetime = time
         self.route_type: RouteType = route_type
+        self.max_results: int = max_results
 
 
 # region: Get Next Trains
@@ -157,7 +160,7 @@ class GetNextTrainsRequest(SingleResponseRequest[GetNextTrainsResult]):
         The time to use for the search.
     """
 
-    def __init__(self, stop_id: str, time: datetime.datetime):
+    def __init__(self, stop_id: str, time: datetime.datetime, max_results: int):
         """Initializes the get next trains request.
 
         Parameters
@@ -166,10 +169,12 @@ class GetNextTrainsRequest(SingleResponseRequest[GetNextTrainsResult]):
             The ID of the stop to retrieve trains for.
         time : datetime.datetime
             The time to use for the search.
+        max_results : int
+            The maximum number of results to return.
         """
-
         self.stop_id: str = stop_id
         self.time: datetime.datetime = time
+        self.max_results: int = max_results
 
 
 # endregion

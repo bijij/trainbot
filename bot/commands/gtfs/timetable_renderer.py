@@ -153,7 +153,6 @@ _COLOUR_CODES = {
 
 
 _SCREEN_WIDTH = 48
-_MAX_NEXT_TRAINS = 6
 
 
 def _with_formatting(text: str, colour: _DiscordAnsiColour | None = None, bold: bool = False, underline: bool = False) -> str:
@@ -248,7 +247,7 @@ _OUTBOUND_DIRECTIONS = {
 }
 
 
-def _get_header_text(stop_id: str, slim: bool = False) -> Mapping[Direction, str]:
+def _get_header_text(stop_id: str, max_services: int, slim: bool = False) -> Mapping[Direction, str]:
     """Returns the header text for a train timetable.
 
     Parameters
@@ -266,7 +265,7 @@ def _get_header_text(stop_id: str, slim: bool = False) -> Mapping[Direction, str
     if _LINES[stop_id] is _Line.INNER_CITY:
         if slim:
             return {Direction.UPWARD: "South/West", Direction.DOWNWARD: "North"}
-        return {Direction.UPWARD: "(1-6) South/West", Direction.DOWNWARD: "(1-6) North"}
+        return {Direction.UPWARD: f"(1-{max_services}) South/West", Direction.DOWNWARD: f"(1-{max_services}) North"}
 
     outbound_orientation = _CardinalDirection.NONE
     line = _LINES[stop_id]
@@ -667,6 +666,7 @@ def _render_train_timetable(
     upward_services: Sequence[StopTimeInstance],
     downward_services: Sequence[StopTimeInstance],
     lookahead_hours: int,
+    max_services: int,
     direction: Direction | None,
 ) -> str:
     """Renders a train timetable for a stop.
@@ -683,6 +683,8 @@ def _render_train_timetable(
         The downward services to render.
     lookahead_hours : int
         The number of hours ahead services are being displayed for.
+    max_services : int
+        The maximum number of services to render.
     direction : Direction
         The direction of the route.
 
@@ -704,7 +706,10 @@ def _render_train_timetable(
     if direction is not None:
         text = (
             _with_formatting(f"[{now.strftime("%I:%M:%S")}]", _DiscordAnsiColour.YELLOW, bold=True)
-            + _with_formatting(f"{f"Next Trains {_get_header_text(stop.id)[direction]}":^{_SCREEN_WIDTH - 10}}", _DiscordAnsiColour.WHITE)
+            + _with_formatting(
+                f"{f"Next Trains {_get_header_text(stop.id, max_services)[direction], max_services}":^{_SCREEN_WIDTH - 10}}",
+                _DiscordAnsiColour.WHITE,
+            )
             + "\n"
         )
 
@@ -712,7 +717,7 @@ def _render_train_timetable(
 
         if services:
             text += "Service                        Platform  Departs\n"
-            text += _render_train_bars(stop, now, services, _MAX_NEXT_TRAINS)
+            text += _render_train_bars(stop, now, services, max_services)
 
         else:
             text += _render_no_trains_text(up_text if direction is Direction.UPWARD else down_text, lookahead_hours) + "\n"
@@ -721,29 +726,33 @@ def _render_train_timetable(
         if _LINES[stop.id] is _Line.INNER_CITY:
             text = (
                 _with_formatting(f"[{now.strftime("%I:%M:%S")}]", _DiscordAnsiColour.YELLOW, bold=True)
-                + _with_formatting(f"{f"Next 3 Trains North and South/West":^{_SCREEN_WIDTH - 10}}", _DiscordAnsiColour.WHITE)
+                + _with_formatting(
+                    f"{f"Next {max_services // 2} Trains North and South/West":^{_SCREEN_WIDTH - 10}}", _DiscordAnsiColour.WHITE
+                )
                 + "\n"
             )
         else:
             text = (
                 _with_formatting(f"[{now.strftime("%I:%M:%S")}]", _DiscordAnsiColour.YELLOW, bold=True)
-                + _with_formatting(f"{f"Next 3 Inbound and Outbound Trains":^{_SCREEN_WIDTH - 10}}", _DiscordAnsiColour.WHITE)
+                + _with_formatting(
+                    f"{f"Next {max_services // 2} Inbound and Outbound Trains":^{_SCREEN_WIDTH - 10}}", _DiscordAnsiColour.WHITE
+                )
                 + "\n"
             )
 
-        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[inbound_direction]:<{_SCREEN_WIDTH - 29}}"}Platform  Departs\n"
+        text += f"{f"Next Trains {_get_header_text(stop.id, max_services // 2, slim=True)[inbound_direction]:<{_SCREEN_WIDTH - 29}}"}Platform  Departs\n"
         inbound_services = upward_services if inbound_direction is Direction.UPWARD else downward_services
         if inbound_services:
-            text += _render_train_bars(stop, now, inbound_services, _MAX_NEXT_TRAINS // 2)
+            text += _render_train_bars(stop, now, inbound_services, max_services // 2)
         else:
             text += (
                 _render_no_trains_text(up_text if inbound_direction is Direction.UPWARD else down_text, lookahead_hours, slim=True) + "\n"
             )
 
-        text += f"{f"Next Trains {_get_header_text(stop.id, slim=True)[outbound_direction]:<{_SCREEN_WIDTH - 29}}"}Platform  Departs\n"
+        text += f"{f"Next Trains {_get_header_text(stop.id, max_services // 2, slim=True)[outbound_direction]:<{_SCREEN_WIDTH - 29}}"}Platform  Departs\n"
         outbound_services = upward_services if outbound_direction is Direction.UPWARD else downward_services
         if outbound_services:
-            text += _render_train_bars(stop, now, outbound_services, _MAX_NEXT_TRAINS // 2)
+            text += _render_train_bars(stop, now, outbound_services, max_services // 2)
         else:
             text += (
                 _render_no_trains_text(up_text if outbound_direction is Direction.UPWARD else down_text, lookahead_hours, slim=True) + "\n"
@@ -900,6 +909,7 @@ def render_timetable(
     services: Sequence[StopTimeInstance],
     type: Literal[RouteType.RAIL],
     lookahead_hours: int,
+    max_services: int,
     direction: Direction | None = ...,
 ) -> str: ...
 
@@ -911,6 +921,7 @@ def render_timetable(
     services: Sequence[StopTimeInstance],
     type: RouteType,
     lookahead_hours: int,
+    max_services: int,
 ) -> str: ...
 
 
@@ -920,6 +931,7 @@ def render_timetable(
     services: Sequence[StopTimeInstance],
     type: RouteType,
     lookahead_hours: int,
+    max_services: int,
     direction: Direction | None = None,
 ) -> str:
     """Render a timetable for a stop.
@@ -936,6 +948,8 @@ def render_timetable(
         The type of route.
     lookahead_hours : int
         The number of hours ahead services are being displayed for.
+    max_services: int
+        The maximum number of services to display.
     direction : Direction, optional
         The direction of the route, this only applies to trains.
 
@@ -950,7 +964,7 @@ def render_timetable(
 
         upward_services = [service for service in services if service.trip.direction is Direction.UPWARD]
         downward_services = [service for service in services if service.trip.direction is Direction.DOWNWARD]
-        return _render_train_timetable(stop, now, upward_services, downward_services, lookahead_hours, direction)
+        return _render_train_timetable(stop, now, upward_services, downward_services, lookahead_hours, max_services, direction)
     elif type is RouteType.BUS:
         return _render_bus_timetable(stop, now, services, lookahead_hours)
     elif type is RouteType.TRAM:

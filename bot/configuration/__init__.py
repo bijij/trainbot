@@ -54,11 +54,11 @@ class Configuration:
         }
 
     @property
-    def max_results(self) -> dict[RouteType, int]:
+    def default_max_results(self) -> dict[RouteType, int]:
         """dict[RouteType, int]: The maximum number of results to return for each route type."""
         from ..gtfs.types import RouteType  # This is to avoid a circular import.
 
-        return defaultdict(lambda: 10) | {
+        return defaultdict(lambda: 7) | {
             RouteType.RAIL: 6,
             RouteType.TRAM: 2,
         }

@@ -46,6 +46,8 @@ def _with_code_block(text: str, language: str) -> str:
 @TIMETABLE_GROUP.command()
 @discord.app_commands.describe(
     stop_id="The GTFS stop ID to retrieve the train timetable for.",
+    direction="Whether to only show trains travelling in a specific direction.",
+    max_results="The maximum number of results to return.",
     private="Whether to send the link privately.",
 )
 @discord.app_commands.autocomplete(stop_id=_autocomplete(RouteType.RAIL, parent_only=True))
@@ -53,6 +55,7 @@ async def train(
     interaction: discord.Interaction[TrainBot],
     stop_id: str,
     direction: Direction | None = None,
+    max_results: discord.app_commands.Range[int, 6, 24] | None = None,
     private: bool = False,
 ) -> None:
     """Retrieves the link to the train timetable for the given stop."""
@@ -60,8 +63,10 @@ async def train(
         await interaction.response.send_message("GTFS data is currently unavailable.", ephemeral=True)
         return
 
+    max_results = max_results or interaction.client.config.default_max_results[RouteType.RAIL]
+
     try:
-        request = GetNextTrainsRequest(stop_id=stop_id, time=interaction.created_at)
+        request = GetNextTrainsRequest(stop_id=stop_id, time=interaction.created_at, max_results=max_results)
         stop, down_trains, up_trains = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     except Exception:
         await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
@@ -71,7 +76,7 @@ async def train(
 
     trains = [*down_trains, *up_trains]
     lookahead_hours = interaction.client.config.lookahead_window[RouteType.RAIL]
-    timetable = _with_code_block(render_timetable(stop, now, trains, RouteType.RAIL, lookahead_hours, direction), "ansi")
+    timetable = _with_code_block(render_timetable(stop, now, trains, RouteType.RAIL, lookahead_hours, max_results, direction), "ansi")
 
     await interaction.response.send_message(
         embed=discord.Embed(
@@ -90,12 +95,14 @@ async def train(
 @TIMETABLE_GROUP.command()
 @discord.app_commands.describe(
     stop_id="The GTFS stop ID to retrieve the bus timetable for.",
+    max_results="The maximum number of results to return.",
     private="Whether to send the link privately.",
 )
 @discord.app_commands.autocomplete(stop_id=_autocomplete(RouteType.BUS))
 async def bus(
     interaction: discord.Interaction[TrainBot],
     stop_id: str,
+    max_results: discord.app_commands.Range[int, 7, 24] | None = None,
     private: bool = False,
 ) -> None:
     """Retrieves the link to the bus timetable for the given stop."""
@@ -103,8 +110,10 @@ async def bus(
         await interaction.response.send_message("GTFS data is currently unavailable.", ephemeral=True)
         return
 
+    max_results = max_results or interaction.client.config.default_max_results[RouteType.BUS]
+
     try:
-        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.BUS, time=interaction.created_at)
+        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.BUS, time=interaction.created_at, max_results=max_results)
         stop, buses = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     except Exception:
         await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
@@ -112,7 +121,7 @@ async def bus(
 
     now = interaction.created_at.astimezone(interaction.client.config.local_timezone)
     lookahead_hours = interaction.client.config.lookahead_window[RouteType.BUS]
-    timetable = _with_code_block(render_timetable(stop, now, buses, RouteType.BUS, lookahead_hours), "ansi")
+    timetable = _with_code_block(render_timetable(stop, now, buses, RouteType.BUS, lookahead_hours, max_results), "ansi")
 
     await interaction.response.send_message(
         embed=discord.Embed(
@@ -131,12 +140,14 @@ async def bus(
 @TIMETABLE_GROUP.command()
 @discord.app_commands.describe(
     stop_id="The GTFS stop ID to retrieve the tram timetable for.",
+    max_results="The maximum number of results to return.",
     private="Whether to send the link privately.",
 )
 @discord.app_commands.autocomplete(stop_id=_autocomplete(RouteType.TRAM, parent_only=True))
 async def tram(
     interaction: discord.Interaction[TrainBot],
     stop_id: str,
+    max_results: discord.app_commands.Range[int, 2, 24] | None = None,
     private: bool = False,
 ) -> None:
     """Retrieves the link to the tram timetable for the given stop."""
@@ -144,8 +155,10 @@ async def tram(
         await interaction.response.send_message("GTFS data is currently unavailable.", ephemeral=True)
         return
 
+    max_results = max_results or interaction.client.config.default_max_results[RouteType.TRAM]
+
     try:
-        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.TRAM, time=interaction.created_at)
+        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.TRAM, time=interaction.created_at, max_results=max_results)
         stop, trams = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     except Exception:
         await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
@@ -153,7 +166,7 @@ async def tram(
 
     now = interaction.created_at.astimezone(interaction.client.config.local_timezone)
     lookahead_hours = interaction.client.config.lookahead_window[RouteType.TRAM]
-    timetable = _with_code_block(render_timetable(stop, now, trams, RouteType.TRAM, lookahead_hours), "ansi")
+    timetable = _with_code_block(render_timetable(stop, now, trams, RouteType.TRAM, lookahead_hours, max_results), "ansi")
 
     await interaction.response.send_message(
         embed=discord.Embed(
@@ -172,12 +185,14 @@ async def tram(
 @TIMETABLE_GROUP.command()
 @discord.app_commands.describe(
     stop_id="The GTFS stop ID to retrieve the ferry timetable for.",
+    max_results="The maximum number of results to return.",
     private="Whether to send the link privately.",
 )
 @discord.app_commands.autocomplete(stop_id=_autocomplete(RouteType.FERRY))
 async def ferry(
     interaction: discord.Interaction[TrainBot],
     stop_id: str,
+    max_results: discord.app_commands.Range[int, 6, 24] | None = None,
     private: bool = False,
 ) -> None:
     """Retrieves the link to the ferry timetable for the given stop."""
@@ -185,8 +200,10 @@ async def ferry(
         await interaction.response.send_message("GTFS data is currently unavailable.", ephemeral=True)
         return
 
+    max_results = max_results or interaction.client.config.default_max_results[RouteType.FERRY]
+
     try:
-        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.FERRY, time=interaction.created_at)
+        request = GetNextServicesRequest(stop_id=stop_id, route_type=RouteType.FERRY, time=interaction.created_at, max_results=max_results)
         stop, ferries = await interaction.client.mediator.request(ChannelNames.GTFS, request)
     except Exception:
         await interaction.response.send_message("Failed to retrieve timetable.", ephemeral=True)
@@ -194,7 +211,7 @@ async def ferry(
 
     now = interaction.created_at.astimezone(interaction.client.config.local_timezone)
     lookahead_hours = interaction.client.config.lookahead_window[RouteType.FERRY]
-    timetable = f"```ansi\n{render_timetable(stop, now, ferries, RouteType.FERRY, lookahead_hours)}\n```"
+    timetable = f"```ansi\n{render_timetable(stop, now, ferries, RouteType.FERRY, lookahead_hours, max_results)}\n```"
 
     await interaction.response.send_message(
         embed=discord.Embed(

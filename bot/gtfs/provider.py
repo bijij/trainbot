@@ -91,7 +91,7 @@ class GtfsProvider(Service):
                 and stop_time.trip.route.type is request.route_type
                 and not stop_time.terminates
             ),
-            self._config.max_results[request.route_type],
+            request.max_results,
         )
 
         return GetNextServicesResult(stop, services=list(services))
@@ -114,7 +114,7 @@ class GtfsProvider(Service):
                 and stop_time.trip.direction is Direction.DOWNWARD
                 and not stop_time.terminates
             ),
-            self._config.max_results[RouteType.RAIL],
+            request.max_results,
         )
         up_trains = islice(
             (
@@ -126,7 +126,7 @@ class GtfsProvider(Service):
                 and stop_time.trip.direction is Direction.UPWARD
                 and not stop_time.terminates
             ),
-            self._config.max_results[RouteType.RAIL],
+            request.max_results,
         )
 
         return GetNextTrainsResult(stop, down_trains=list(down_trains), up_trains=list(up_trains))
