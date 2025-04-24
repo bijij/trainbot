@@ -271,7 +271,7 @@ def _get_header_text(stop_id: str, max_services: int, slim: bool = False) -> Map
     line = _LINES[stop_id]
 
     for line_ in _Line:
-        if line & line_:
+        if line_ is not _Line.INNER_CITY and line & line_:
             outbound_orientation |= _OUTBOUND_DIRECTIONS[line_]
 
     outbound_orientation_text = "/".join(
